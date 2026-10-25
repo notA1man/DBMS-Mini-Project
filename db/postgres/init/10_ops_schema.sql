@@ -1,0 +1,5 @@
+-- 10_ops_schema.sql
+-- Owner: Aditya
+-- airport, aircraft, seat, flight, crew, crew_certification, crew_assignment, flight_fare
+-- Exclusion constraints: aircraft turnaround overlap, crew duty overlap
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

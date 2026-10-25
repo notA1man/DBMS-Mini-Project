@@ -1,0 +1,5 @@
+-- 70_functions_ops.sql
+-- Owner: Aditya
+-- sp_generate_seat_map, sp_schedule_flight, sp_assign_crew, fn_flight_crew_complete,
+-- sp_update_flight_status, sp_cancel_flight, fn_crew_chain, sp_refresh_analytics
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

@@ -1,0 +1,4 @@
+-- 80_triggers_ops.sql
+-- Owner: Aditya
+-- outbox triggers, flight status state machine, updated_at
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

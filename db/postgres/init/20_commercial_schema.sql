@@ -1,0 +1,4 @@
+-- 20_commercial_schema.sql
+-- Owner: Aiman
+-- passenger, passenger_phone, booking, ticket, baggage, payment, receipt
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

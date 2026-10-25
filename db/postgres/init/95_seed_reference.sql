@@ -1,0 +1,4 @@
+-- 95_seed_reference.sql
+-- Owner: Aditya
+-- Airports, fleet, seat maps (bulk data seeded by scripts/seed.ts)
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

@@ -1,0 +1,4 @@
+-- 02_domains.sql
+-- Owner: Aiman
+-- Shared domains: d_iata_code, d_email, d_phone, d_fare_class, d_money
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

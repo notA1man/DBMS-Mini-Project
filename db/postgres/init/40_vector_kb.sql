@@ -1,0 +1,4 @@
+-- 40_vector_kb.sql
+-- Owner: Aiman
+-- kb_document (+ fts), kb_chunk vector(384), feedback_embedding; HNSW cosine indexes
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

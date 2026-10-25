@@ -1,0 +1,5 @@
+-- 60_views.sql
+-- Owner: Both
+-- v_passenger_age, v_aircraft_age (Lab 04), v_flight_load, v_flight_manifest,
+-- v_booking_summary, v_crew_roster, v_crew_coverage, mv_route_revenue_monthly
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

@@ -1,0 +1,4 @@
+-- 90_rls_grants.sql
+-- Owner: Aiman
+-- GRANTs to skyops_app / skyops_readonly, RLS policies on commercial tables
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

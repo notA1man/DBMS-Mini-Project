@@ -1,0 +1,4 @@
+-- 50_indexes.sql
+-- Owner: Both (ops section: Aditya, commercial section: Aiman)
+-- FK indexes, composite search index, partial, GIN/trigram, BRIN
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

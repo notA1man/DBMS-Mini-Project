@@ -1,0 +1,4 @@
+-- 30_platform_schema.sql
+-- Owner: Aiman (app_user), Aditya (outbox_event)
+-- app_user with role/link CHECKs; transactional outbox table
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

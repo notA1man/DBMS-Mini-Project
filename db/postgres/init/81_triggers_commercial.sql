@@ -1,0 +1,4 @@
+-- 81_triggers_commercial.sql
+-- Owner: Aiman
+-- booking total sync, payment -> receipt, seat/aircraft match, baggage allowance, check-in window
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

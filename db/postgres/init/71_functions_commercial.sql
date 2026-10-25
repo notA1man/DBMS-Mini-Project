@@ -1,0 +1,4 @@
+-- 71_functions_commercial.sql
+-- Owner: Aiman
+-- fn_generate_pnr, fn_dynamic_fare, fn_book, sp_pay, sp_cancel_booking, sp_check_in, fn_seat_map
+-- TODO: implement (see IMPLEMENTATION_PLAN.md)

@@ -1,0 +1,4 @@
+CREATE CONSTRAINT airport_code IF NOT EXISTS FOR (a:Airport) REQUIRE a.code IS UNIQUE;
+CREATE CONSTRAINT flight_id IF NOT EXISTS FOR (f:Flight) REQUIRE f.flightId IS UNIQUE;
+CREATE CONSTRAINT aircraft_id IF NOT EXISTS FOR (c:Aircraft) REQUIRE c.id IS UNIQUE;
+CREATE INDEX flight_dep IF NOT EXISTS FOR (f:Flight) ON (f.dep);
