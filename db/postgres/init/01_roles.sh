@@ -7,6 +7,6 @@ psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" \
 SELECT format('CREATE ROLE skyops_app LOGIN PASSWORD %L', :'app_pw')
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'skyops_app')\gexec
 CREATE ROLE skyops_readonly NOLOGIN;
-GRANT CONNECT ON DATABASE current_database() TO skyops_app, skyops_readonly;
+GRANT CONNECT ON DATABASE :"DBNAME" TO skyops_app, skyops_readonly;
 GRANT USAGE ON SCHEMA public TO skyops_app, skyops_readonly;
 SQL
