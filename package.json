@@ -11,22 +11,33 @@
     "test": "vitest run",
     "db:up": "docker compose up -d",
     "db:down": "docker compose down",
-    "db:reset": "docker compose down -v && docker compose up -d"
+    "db:reset": "docker compose down -v && docker compose up -d",
+    "db:migrate": "tsx scripts/migrate.ts",
+    "db:mongo:commercial": "tsx scripts/mongo-commercial.ts",
+    "db:seed:commercial": "tsx scripts/seed-commercial.ts",
+    "feedback:index": "tsx scripts/index-feedback.ts",
+    "test:e2e:commercial": "tsx scripts/test-commercial-e2e.ts",
+    "db:seed:demo": "tsx scripts/seed-commercial-demo.ts"
   },
   "dependencies": {
+    "@huggingface/transformers": "^4.3.1",
     "mongodb": "^7.7.0",
     "neo4j-driver": "^6.2.0",
     "next": "15.5.28",
+    "next-auth": "^5.0.0-beta.32",
     "pg": "^8.23.1",
+    "qrcode": "^1.5.4",
     "react": "19.1.0",
     "react-dom": "19.1.0",
     "zod": "^4.6.7"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
+    "@playwright/test": "^1.64.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^22.20.5",
     "@types/pg": "^8.23.1",
+    "@types/qrcode": "^1.5.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
@@ -35,5 +46,8 @@
     "tsx": "^4.23.15",
     "typescript": "^5",
     "vitest": "^5.0.5"
+  },
+  "overrides": {
+    "postcss": "8.5.31"
   }
 }

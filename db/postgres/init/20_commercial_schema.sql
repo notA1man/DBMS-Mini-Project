@@ -8,7 +8,7 @@ CREATE TABLE passenger (
   middle_name text,
   last_name text NOT NULL CHECK (length(btrim(last_name)) BETWEEN 1 AND 80),
   gender text CHECK (gender IN ('Male','Female','Other','Prefer not to say')),
-  date_of_birth date NOT NULL CHECK (date_of_birth >= DATE '1900-01-01'),
+  date_of_birth date NOT NULL CHECK (date_of_birth >= DATE '1900-01-01' AND date_of_birth <= current_date),
   email d_email NOT NULL UNIQUE,
   passport_no_enc bytea,
   nationality text,

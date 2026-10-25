@@ -12,6 +12,13 @@ The commercial PostgreSQL foundation is implemented in `02`, `20`, the
 Tests use a **test-only** operations contract in
 `db/postgres/tests/fixtures/ops_contract.sql`; it must never be deployed.
 
+The application now includes `/login`, `/register`, direct flight search,
+`/book` (companions and multiple legs), `/trips`, check-in/QR boarding passes,
+receipts, baggage and cancellation, feedback and notifications, `/policies`,
+`/admin/users`, `/ops/passengers`, `/ops/complaints`, and `/showcase`.
+These use the same commercial SQL tested in isolation. Connecting search consumes
+Aditya's future endpoint; it is not a working graph integration yet.
+
 ## Problem, objectives and functional requirements
 
 SkyOps connects airline sales and operations. A seat must not be sold twice,
@@ -37,12 +44,17 @@ Operations must provide these tables **before** commercial migrations:
 | `flight` | `flight_id bigint PK`, `aircraft_id`, `departure_time`, `arrival_time`, `flight_status` |
 | `flight_fare` | `(flight_id,fare_class) PK`, `base_fare`, `seats_allocated` |
 | `crew` | `crew_id bigint PK` |
+| `crew_assignment` | `(crew_id,flight_id)`; used for assigned-manifest RLS |
 | `outbox_event` | `aggregate`, `aggregate_id` (text), `event_type`, `payload jsonb`; generated event ID and processing metadata |
 
 `outbox_event` must exist by the first commercial payment/cancellation. Both
 operations and commercial routines execute within the caller's transaction.
 Keep operations additions in their reserved files/sections. Do not overwrite
 the implemented commercial sections of shared files.
+Flight cancellation must clear affected tickets' `checkin_status` to
+`NotCheckedIn` and `boarding_pass_code` to NULL when marking them `Disrupted`,
+and mark the corresponding booking `Disrupted`. The ticket consistency CHECK
+deliberately rejects retaining a boarding pass on a non-active ticket.
 
 `fn_book(booker_passenger_id, items jsonb)` returns the six-character PNR.
 Each item is `{flightId, passengerId, fareClass, seatNumber?}`. The booker is
@@ -58,6 +70,18 @@ Commercial routines publish `BOOKING_CONFIRMED` and `BOOKING_CANCELLED` with
 worker should upsert one Mongo notification keyed by `event_id`; never insert
 a new notification on each delivery attempt. If outbox insertion fails, the
 commercial transaction fails too. No cross-database writes occur before commit.
+They also publish `AUDIT_LOG` for commercial mutations. Its payload has `ts`,
+`userId` (string), `role`, `action`, `entity` and `entityId`; the dispatcher should
+upsert `audit_log` by source event ID. Authentication passwords and passport values
+are not included. Native Mongo feedback/notification-read audits still need the
+shared audit integration; no cross-store atomicity is claimed for native writes.
+
+The connection-search UI currently expects a proposed response contract:
+`{itineraries:[{legs:[{flightId,flightNumber,origin,destination,departureTime,arrivalTime}],totalFare}]}`.
+IDs are strings, timestamps ISO-8601, and fares INR. Agree this response shape
+with Aditya before integration; the plan specified only the endpoint and inputs.
+The UI sends `from,to,date,pax` to `GET /api/search/itineraries` and treats the
+returned fare as indicative; PostgreSQL reprices and validates at booking time.
 
 ## Pricing, payments and integrity
 
@@ -103,9 +127,18 @@ must be 12–72 bytes (bcrypt's input limit). `fn_authenticate` returns identity
 only, persists failed attempts and locks for 15 minutes after five failures.
 Session/API authorization must recheck active status against the database.
 
-`passport_no_enc` is reserved for pgcrypto ciphertext. The current registration
-flow does not collect passports. Never store a plaintext passport or encryption
-key in this column. Database-owner credentials are only for migrations/tests.
+Persisted request budgets protect login (20/minute), registration (5/10 minutes)
+and public policy retrieval (20/minute). By default a deployment shares a budget
+because arbitrary client IP headers are untrusted. Set `AUTH_TRUST_PROXY=true`
+only behind a proxy that overwrites `x-forwarded-for`. The budget table stores a
+SHA-256 key, counter and start time; old entries are pruned after an hour.
+
+`sp_store_passport(passenger_id, number, key)` encrypts using pgcrypto AES-256 and
+enforces ownership/staff access; the key must be supplied by trusted server code
+from `PII_ENCRYPTION_KEY` and be at least 32 bytes. There is no app decryption grant.
+The current registration flow does not collect passports. Never store a plaintext
+passport or encryption key in the column. Database-owner credentials are only for
+migrations/seeding/index repair/tests, not web requests.
 
 ## Data dictionary
 
@@ -119,6 +152,7 @@ key in this column. Database-owner credentials are only for migrations/tests.
 | payment | identity PK; booking FK, amount/mode/status, unique idempotency reference |
 | receipt | identity PK; unique payment FK, receipt number/date |
 | app_user | identity PK; unique email, bcrypt hash, role/link checks, lockout and active state |
+| auth_rate_limit | SHA-256 scope/address key PK, budget window and counter; no direct app SELECT |
 | kb_document | identity PK; title/category/body and English FTS |
 | kb_chunk | identity PK; document FK + unique chunk index, content/FTS, 384-dimensional vector |
 | feedback_embedding | Mongo ObjectId text PK; flight FK, sentiment/date and vector |
@@ -138,6 +172,62 @@ A null vector gives explicit text-only fallback; it must not be called semantic
 retrieval in the UI. Policy content must be authored as SkyOps demo policy,
 not represented as an actual carrier's rules.
 
+`db/postgres/seed/policies.ts` contains 25 authored documents. Each is shorter
+than the planned 500-token chunk size and therefore uses one chunk. The CLI
+seed is repeatable and replaces each document's chunks transactionally.
+Changing the embedding model requires re-embedding the entire corpus.
+
+## Mongo and feedback indexing
+
+`npm run db:mongo:commercial` creates/updates strict validators for `feedback`
+and `notifications`, plus indexes and a 90-day notification TTL. Relational IDs
+are decimal **strings** to preserve bigint precision. Feedback is unique per
+booking/flight/passenger and allowed only after an owned flight has landed.
+The `sentiment` field is a transparent rating heuristic (4–5 positive, 3 neutral,
+1–2 negative), not a learned sentiment classifier.
+
+Native Mongo feedback starts with `embeddingStatus: pending`.
+`npm run feedback:index` embeds up to 100 pending comments, commits a pgvector
+upsert, then marks Mongo ready. Failures retain retryability; no atomic commit
+across Mongo and PostgreSQL is claimed. Schedule this CLI after integration.
+Ops similarity supports route, flight and date filters. Feedback scorecard
+aggregation is exported from `db/mongo/commercial.ts` for the shared analytics page.
+
+The notification consumer is `deliverCommercialNotification` in
+`src/lib/outbox/commercial.ts`. Its stable `_id=outbox:<event_id>` and `$setOnInsert`
+preserve read state and TTL dates across retries. This handler is implemented;
+Aditya's actual outbox dispatcher is still required to call it.
+
+## Running and seeding
+
+After operations migrations are supplied, run:
+
+```bash
+npm run db:migrate
+npm run db:mongo:commercial
+npm run db:seed:commercial
+# Optional: set SEED_DEMO_PASSWORD in .env, then:
+npm run db:seed:demo
+npm run dev
+```
+
+The main seed creates 25 policies with local embeddings. Optional
+`SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD` bootstrap an administrator without
+changing an existing account. There is no default admin password. The demo seed
+creates `passenger1@skyops.test` through `passenger3@skyops.test`, three bookings,
+and two successful payments against a future operations-seeded flight. It does
+not reset data or change existing passwords.
+
+The migration command refuses incomplete operations dependencies **before applying
+any migration**, skips placeholders, tracks normalized checksums and prevents
+silent edits to applied SQL. On a fresh Docker volume, `99_migration_baseline.sh`
+records scripts that Docker has already applied. Do not reinitialize or reset
+existing volumes just to apply this branch. Add incremental migrations after a
+shared schema has been deployed; do not edit its baselined files in place.
+
+Auth.js follows the [credentials provider](https://authjs.dev/getting-started/authentication/credentials).
+Middleware uses the supported [Next.js 15.5 Node runtime](https://nextjs.org/docs/15/app/api-reference/file-conventions/middleware#runtime).
+
 Showcase queries: `SELECT * FROM fn_seat_map($1)`; owned
 `SELECT * FROM v_booking_summary ORDER BY booking_date DESC`; passenger FTS
 `name_search @@ websearch_to_tsquery('simple',$1)`; and
@@ -154,5 +244,6 @@ The role must already exist (Compose initialization creates it).
 Operations migrations, seed flights, graph itinerary API, flight-cancellation
 integration and notification dispatch require Aditya's implementation. A
 fixture test passing is not evidence of those production integrations working.
-Cloud deployment, production migrations, visual review, benchmark evidence and
-joint disruption E2E remain separate acceptance checks.
+Desktop/mobile landing screenshots and a boarding-pass/feedback screen were
+visually inspected. Cloud deployment, production migrations, full visual acceptance,
+benchmark evidence and joint disruption E2E remain separate acceptance checks.

@@ -20,6 +20,12 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
     AND is_active AND passenger_id=p_passenger)
 $$;
 
+CREATE FUNCTION fn_crew_can_read(p_flight bigint) RETURNS boolean
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
+  SELECT EXISTS(SELECT 1 FROM app_user u JOIN crew_assignment ca ON ca.crew_id=u.crew_id
+    WHERE u.user_id=fn_current_user_id() AND u.is_active AND u.role='CREW' AND ca.flight_id=p_flight)
+$$;
+
 CREATE FUNCTION fn_assert_booking_access(p_pnr text) RETURNS void
 LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
 BEGIN
@@ -93,6 +99,7 @@ BEGIN
     INSERT INTO ticket(booking_id,ticket_seq,fare_class,fare_amount,flight_id,passenger_id,aircraft_id,seat_number)
     VALUES(pnr,seq,item->>'fareClass',price,f.flight_id,(item->>'passengerId')::bigint,f.aircraft_id,nullif(item->>'seatNumber',''));
   END LOOP;
+  PERFORM fn_emit_audit('BOOK',pnr);
   RETURN pnr;
 END $$;
 
@@ -108,10 +115,11 @@ BEGIN
     IF prior.booking_id=p_pnr AND prior.amount=p_amount AND prior.payment_mode=p_mode THEN RETURN; END IF;
     RAISE EXCEPTION 'Payment reference already used';
   END IF;
-  IF b.booking_status <> 'Pending' OR p_amount IS NULL OR p_amount<=0 OR p_amount>b.total_amount-b.amount_paid THEN
+  IF b.booking_status <> 'Pending' OR p_amount IS NULL OR p_amount<=0 OR p_amount<>round(p_amount,2) OR p_amount>b.total_amount-b.amount_paid THEN
     RAISE EXCEPTION 'Invalid payment amount or booking status';
   END IF;
   INSERT INTO payment(amount,payment_mode,gateway_ref,booking_id) VALUES(p_amount,p_mode,ref,p_pnr);
+  PERFORM fn_emit_audit('PAY',p_pnr);
 END $$;
 
 CREATE PROCEDURE sp_check_in(p_pnr text, p_seq smallint, p_seat text)
@@ -129,6 +137,7 @@ BEGIN
   END IF;
   UPDATE ticket SET seat_number=p_seat, checkin_status='CheckedIn',
     boarding_pass_code=encode(gen_random_bytes(16),'hex') WHERE booking_id=p_pnr AND ticket_seq=p_seq;
+  PERFORM fn_emit_audit('CHECK_IN',p_pnr);
 END $$;
 
 CREATE PROCEDURE sp_add_baggage(p_pnr text, p_seq smallint, p_weight numeric, p_type text)
@@ -140,6 +149,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Ticket unavailable'; END IF;
   SELECT coalesce(max(bag_seq),0)+1 INTO next_seq FROM baggage WHERE booking_id=p_pnr AND ticket_seq=p_seq;
   INSERT INTO baggage VALUES(p_pnr,p_seq,next_seq,p_weight,p_type,DEFAULT);
+  PERFORM fn_emit_audit('ADD_BAGGAGE',p_pnr);
 END $$;
 
 CREATE PROCEDURE sp_cancel_booking(p_pnr text, p_reason text)
@@ -162,6 +172,7 @@ BEGIN
   INSERT INTO outbox_event(aggregate,aggregate_id,event_type,payload)
   VALUES('booking',p_pnr,'BOOKING_CANCELLED',jsonb_build_object(
     'bookingId',p_pnr,'userId',b.created_by_user,'refundAmount',refund,'reason',p_reason));
+  PERFORM fn_emit_audit('CANCEL',p_pnr);
 END $$;
 
 CREATE FUNCTION fn_seat_map(p_flight bigint)
@@ -201,6 +212,20 @@ BEGIN
   RETURN QUERY SELECT u.user_id,u.email::text,u.role,u.passenger_id,u.crew_id;
 END $$;
 
+CREATE FUNCTION fn_request_budget(p_key text,p_limit integer,p_seconds integer) RETURNS boolean
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE used integer;
+BEGIN
+  IF p_limit NOT BETWEEN 1 AND 100 OR p_seconds NOT BETWEEN 10 AND 3600 THEN RAISE EXCEPTION 'Invalid request budget'; END IF;
+  DELETE FROM auth_rate_limit WHERE bucket_start<now()-interval '1 hour';
+  INSERT INTO auth_rate_limit AS r(key,bucket_start,attempts) VALUES(p_key,now(),1)
+    ON CONFLICT(key) DO UPDATE SET
+      bucket_start=CASE WHEN r.bucket_start<=now()-make_interval(secs=>p_seconds) THEN now() ELSE r.bucket_start END,
+      attempts=CASE WHEN r.bucket_start<=now()-make_interval(secs=>p_seconds) THEN 1 ELSE least(r.attempts+1,p_limit+1) END
+    RETURNING attempts INTO used;
+  RETURN used<=p_limit;
+END $$;
+
 CREATE FUNCTION fn_register(p_email text, p_password text, p_first text, p_last text, p_dob date)
 RETURNS bigint LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
 DECLARE pid bigint; uid bigint;
@@ -213,7 +238,42 @@ BEGIN
     VALUES(btrim(p_first),btrim(p_last),p_dob,lower(btrim(p_email))) RETURNING passenger_id INTO pid;
   INSERT INTO app_user(email,password_hash,role,passenger_id)
     VALUES(lower(btrim(p_email)),crypt(p_password,gen_salt('bf',12)),'PASSENGER',pid) RETURNING user_id INTO uid;
+  PERFORM fn_emit_audit('REGISTER',uid::text,uid);
   RETURN uid;
+END $$;
+
+CREATE FUNCTION fn_add_traveler(p_email text,p_first text,p_last text,p_dob date) RETURNS bigint
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE pid bigint;
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM app_user WHERE user_id=fn_current_user_id() AND is_active AND role='PASSENGER') THEN
+    RAISE EXCEPTION 'Passenger account required' USING ERRCODE='42501';
+  END IF;
+  IF p_dob>current_date THEN RAISE EXCEPTION 'Date of birth cannot be in the future'; END IF;
+  -- Reuse a companion previously booked by this account only when identity
+  -- details match; never reuse another account's record by email alone.
+  SELECT p.passenger_id INTO pid FROM passenger p WHERE p.email=lower(btrim(p_email))
+    AND p.first_name=btrim(p_first) AND p.last_name=btrim(p_last) AND p.date_of_birth=p_dob
+    AND EXISTS(SELECT 1 FROM ticket t JOIN booking b USING(booking_id)
+      WHERE t.passenger_id=p.passenger_id AND fn_owns_passenger(b.passenger_id));
+  IF FOUND THEN RETURN pid; END IF;
+  INSERT INTO passenger(first_name,last_name,date_of_birth,email)
+    VALUES(btrim(p_first),btrim(p_last),p_dob,lower(btrim(p_email))) RETURNING passenger_id INTO pid;
+  RETURN pid;
+END $$;
+
+CREATE PROCEDURE sp_admin_create_user(p_email text,p_password text,p_role text,p_crew bigint DEFAULT NULL)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+BEGIN
+  IF NOT EXISTS(SELECT 1 FROM app_user WHERE user_id=fn_current_user_id() AND is_active AND role='ADMIN') THEN
+    RAISE EXCEPTION 'Administrator required' USING ERRCODE='42501';
+  END IF;
+  IF p_role NOT IN ('ADMIN','OPS','CREW') OR p_password IS NULL OR octet_length(p_password) NOT BETWEEN 12 AND 72 THEN
+    RAISE EXCEPTION 'Invalid staff role or password';
+  END IF;
+  INSERT INTO app_user(email,password_hash,role,crew_id)
+    VALUES(lower(btrim(p_email)),crypt(p_password,gen_salt('bf',12)),p_role,p_crew);
+  PERFORM fn_emit_audit('CREATE_STAFF',lower(btrim(p_email)));
 END $$;
 
 CREATE FUNCTION fn_session_user()
@@ -222,6 +282,18 @@ LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT a.user_id,a.email::text,a.role,a.passenger_id,a.crew_id FROM app_user a
   WHERE a.user_id=fn_current_user_id() AND a.is_active
 $$;
+
+CREATE PROCEDURE sp_store_passport(p_passenger bigint,p_number text,p_key text)
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+BEGIN
+  IF NOT (fn_is_staff() OR fn_owns_passenger(p_passenger)) THEN
+    RAISE EXCEPTION 'Passenger unavailable' USING ERRCODE='42501';
+  END IF;
+  IF p_key IS NULL OR octet_length(p_key)<32 THEN RAISE EXCEPTION 'Encryption key is not configured'; END IF;
+  IF p_number IS NULL OR p_number !~ '^[A-Z0-9]{6,20}$' THEN RAISE EXCEPTION 'Invalid passport format'; END IF;
+  UPDATE passenger SET passport_no_enc=pgp_sym_encrypt(p_number,p_key,'cipher-algo=aes256') WHERE passenger_id=p_passenger;
+  PERFORM fn_emit_audit('UPDATE_PASSPORT',p_passenger::text);
+END $$;
 
 CREATE FUNCTION fn_admin_users()
 RETURNS TABLE(user_id bigint,email text,role text,is_active boolean,passenger_id bigint,crew_id bigint)
@@ -243,6 +315,20 @@ BEGIN
   -- A linked passenger remains a passenger; staff accounts are provisioned separately.
   UPDATE app_user SET role=p_role,is_active=p_active,crew_id=p_crew WHERE user_id=p_id;
   IF NOT FOUND THEN RAISE EXCEPTION 'User unavailable'; END IF;
+  PERFORM fn_emit_audit('UPDATE_USER',p_id::text);
+END $$;
+
+-- Aditya's dispatcher projects AUDIT_LOG into audit_log. Credentials and submitted
+-- passenger fields never enter the payload. Audit insertion shares the mutation transaction.
+CREATE FUNCTION fn_emit_audit(p_action text,p_entity_id text,p_actor bigint DEFAULT fn_current_user_id()) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public, pg_temp AS $$
+DECLARE actor_role text;
+BEGIN
+  SELECT role INTO actor_role FROM app_user WHERE user_id=p_actor AND is_active;
+  IF NOT FOUND THEN RAISE EXCEPTION 'Audit actor unavailable' USING ERRCODE='42501'; END IF;
+  INSERT INTO outbox_event(aggregate,aggregate_id,event_type,payload)
+    VALUES('commercial',p_entity_id,'AUDIT_LOG',jsonb_build_object('ts',now(),'userId',p_actor::text,
+      'role',actor_role,'action',p_action,'entity','commercial','entityId',p_entity_id));
 END $$;
 
 CREATE FUNCTION fn_hybrid_kb(p_embedding vector(384),p_query text,p_category text DEFAULT NULL)

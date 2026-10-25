@@ -2,6 +2,7 @@ import { afterAll, beforeAll, expect, test } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
+import { commercialQueries } from '../queries/commercial';
 
 process.loadEnvFile('.env');
 const database = `skyops_commercial_test_${randomUUID().replaceAll('-', '')}`;
@@ -173,7 +174,7 @@ test('disabled users lose database access even with an existing context', async 
 });
 
 test('confirmation and cancellation publish transactional outbox notifications', async () => {
-  const {rows}=await owner.query('SELECT event_type,payload FROM outbox_event WHERE aggregate_id=$1 ORDER BY event_id',[booking]);
+  const {rows}=await owner.query("SELECT event_type,payload FROM outbox_event WHERE aggregate_id=$1 AND event_type IN ('BOOKING_CONFIRMED','BOOKING_CANCELLED') ORDER BY event_id",[booking]);
   expect(rows.map(r=>r.event_type)).toEqual(['BOOKING_CONFIRMED','BOOKING_CANCELLED']);
   expect(rows[1].payload.refundAmount).toBe(1170);
 });
@@ -185,4 +186,90 @@ test('hybrid retrieval supports vectors, text-only fallback and category filteri
   expect((await asUser(1,c=>c.query("SELECT * FROM fn_hybrid_kb($1::vector,'baggage','baggage')",[embedding]))).rows).toHaveLength(1);
   expect((await asUser(1,c=>c.query("SELECT * FROM fn_hybrid_kb(NULL,'baggage','baggage')"))).rows).toHaveLength(1);
   expect((await asUser(1,c=>c.query("SELECT * FROM fn_hybrid_kb(NULL,'baggage','pets')"))).rows).toHaveLength(0);
+});
+
+test('additional travelers and booking are atomic; booker can read companion details',async()=>{
+  await expect(asUser(1,async c=>{
+    await c.query("SELECT fn_add_traveler('rollback@example.com','Guest','One','2000-01-01')");
+    await c.query("SELECT fn_add_traveler('test1@example.com','Guest','Two','2000-01-01')");
+  })).rejects.toMatchObject({code:'23505'});
+  expect((await owner.query("SELECT * FROM passenger WHERE email='rollback@example.com'")).rows).toHaveLength(0);
+  await asUser(1,async c=>{
+    const guest=(await c.query("SELECT fn_add_traveler('guest@example.com','Guest','Traveler','2000-01-01') AS id")).rows[0].id;
+    await c.query('SELECT fn_book(1,$1::jsonb)',[JSON.stringify([{flightId:2,passengerId:guest,fareClass:'Business',seatNumber:'2A'}])]);
+    expect((await c.query('SELECT * FROM passenger WHERE passenger_id=$1',[guest])).rows).toHaveLength(1);
+    expect((await c.query("SELECT fn_add_traveler('guest@example.com','Guest','Traveler','2000-01-01') AS id")).rows[0].id).toBe(guest);
+  });
+});
+
+test('crew can read only assigned manifests and cannot read financial rows',async()=>{
+  await owner.query('INSERT INTO crew VALUES(1),(2); INSERT INTO crew_assignment VALUES(1,2)');
+  const ids=(await owner.query(`INSERT INTO app_user(email,password_hash,role,crew_id)
+    VALUES('crew1@example.com','test-only','CREW',1),('crew2@example.com','test-only','CREW',2) RETURNING user_id`)).rows;
+  const assigned=Number(ids[0].user_id),unassigned=Number(ids[1].user_id);
+  const tickets=await asUser(assigned,c=>c.query('SELECT * FROM ticket'));
+  expect(tickets.rows.length).toBeGreaterThan(0);
+  expect(tickets.rows.every(t=>t.flight_id==='2')).toBe(true);
+  expect((await asUser(assigned,c=>c.query('SELECT * FROM passenger'))).rows.length).toBeGreaterThan(0);
+  expect((await asUser(unassigned,c=>c.query('SELECT * FROM passenger'))).rows).toHaveLength(0);
+  for(const table of ['booking','payment','receipt']) expect((await asUser(assigned,c=>c.query(`SELECT * FROM ${table}`))).rows).toHaveLength(0);
+});
+
+test('failed outbox write rolls payment, receipt and confirmation back together',async()=>{
+  const pnr=(await owner.query("SELECT booking_id FROM ticket WHERE fare_class='Business' AND flight_id=2")).rows[0].booking_id;
+  const amount=(await owner.query('SELECT total_amount FROM booking WHERE booking_id=$1',[pnr])).rows[0].total_amount;
+  await owner.query("ALTER TABLE outbox_event ADD CONSTRAINT test_reject_confirmation CHECK(event_type<>'BOOKING_CONFIRMED') NOT VALID");
+  try {
+    await expect(asUser(1,c=>c.query("CALL sp_pay($1,$2,'UPI')",[pnr,amount]))).rejects.toMatchObject({code:'23514'});
+    expect((await owner.query('SELECT * FROM payment WHERE booking_id=$1',[pnr])).rows).toHaveLength(0);
+    expect((await owner.query('SELECT amount_paid FROM booking WHERE booking_id=$1',[pnr])).rows[0].amount_paid).toBe('0.00');
+  }finally{await owner.query('ALTER TABLE outbox_event DROP CONSTRAINT test_reject_confirmation');}
+});
+
+test('only administrators can create staff and change account roles',async()=>{
+  await expect(asUser(1,c=>c.query('SELECT * FROM fn_admin_users()'))).rejects.toMatchObject({code:'42501'});
+  const adminId=Number((await owner.query("INSERT INTO app_user(email,password_hash,role) VALUES('admin@example.com','test-only','ADMIN') RETURNING user_id")).rows[0].user_id);
+  await asUser(adminId,c=>c.query("CALL sp_admin_create_user('ops@example.com','temporary-password','OPS')"));
+  const ops=Number((await owner.query("SELECT user_id FROM app_user WHERE email='ops@example.com'")).rows[0].user_id);
+  await asUser(adminId,c=>c.query("CALL sp_admin_user($1,'OPS',false,NULL)",[ops]));
+  expect((await asUser(ops,c=>c.query('SELECT * FROM fn_session_user()'))).rows).toHaveLength(0);
+  await expect(asUser(adminId,c=>c.query("CALL sp_admin_user($1,'OPS',true,NULL)",[adminId]))).rejects.toThrow('own administrator');
+});
+
+test('direct search uses the origin airport calendar date across UTC midnight',async()=>{
+  await owner.query("UPDATE flight SET departure_time='2030-01-02 00:30:00+05:30',arrival_time='2030-01-02 02:30:00+05:30' WHERE flight_id=2");
+  const today=await asUser(1,c=>c.query(commercialQueries.directFlights,['BLR','BOM','2030-01-02']));
+  const yesterday=await asUser(1,c=>c.query(commercialQueries.directFlights,['BLR','BOM','2030-01-01']));
+  expect(today.rows.some(f=>f.flight_id==='2')).toBe(true);
+  expect(yesterday.rows.some(f=>f.flight_id==='2')).toBe(false);
+});
+
+test('request budgets persist and reset after the window expires',async()=>{
+  const key='a'.repeat(64);
+  for(let n=0;n<3;n++) expect((await asUser(1,c=>c.query('SELECT fn_request_budget($1,3,60) AS allowed',[key]))).rows[0].allowed).toBe(true);
+  expect((await asUser(1,c=>c.query('SELECT fn_request_budget($1,3,60) AS allowed',[key]))).rows[0].allowed).toBe(false);
+  await owner.query("UPDATE auth_rate_limit SET bucket_start=now()-interval '2 minutes' WHERE key=$1",[key]);
+  expect((await asUser(1,c=>c.query('SELECT fn_request_budget($1,3,60) AS allowed',[key]))).rows[0].allowed).toBe(true);
+});
+
+test('commercial audit entries carry the database actor but no credentials',async()=>{
+  const rows=(await owner.query("SELECT payload FROM outbox_event WHERE event_type='AUDIT_LOG' AND aggregate_id=$1",[booking])).rows;
+  expect(rows.some(r=>r.payload.action==='PAY' && r.payload.userId==='1')).toBe(true);
+  expect(rows.every(r=>!('password' in r.payload) && !('password_hash' in r.payload))).toBe(true);
+});
+
+test('passport storage encrypts with pgcrypto and enforces ownership',async()=>{
+  const key='test-encryption-key-with-at-least-32-bytes';
+  await asUser(1,c=>c.query("CALL sp_store_passport(1,'A1234567',$1)",[key]));
+  const record=(await owner.query('SELECT passport_no_enc,pgp_sym_decrypt(passport_no_enc,$1) AS plaintext FROM passenger WHERE passenger_id=1',[key])).rows[0];
+  expect(record.plaintext).toBe('A1234567');expect(record.passport_no_enc.toString('utf8')).not.toContain('A1234567');
+  await expect(asUser(2,c=>c.query("CALL sp_store_passport(1,'A1234567',$1)",[key]))).rejects.toMatchObject({code:'42501'});
+  await expect(asUser(1,c=>c.query("CALL sp_store_passport(1,'A1234567','short')"))).rejects.toThrow('Encryption key');
+});
+
+test('staff can execute filtered vector similarity under the application role',async()=>{
+  const vector=JSON.stringify([1,...Array(383).fill(0)]);
+  await owner.query("INSERT INTO feedback_embedding(feedback_oid,flight_id,sentiment,embedding) VALUES('000000000000000000000001',2,'neutral',$1::vector)",[vector]);
+  const uid=Number((await owner.query("SELECT user_id FROM app_user WHERE email='admin@example.com'")).rows[0].user_id);
+  expect((await asUser(uid,c=>c.query(commercialQueries.similar,[vector,null,'2000-01-01','BLR-BOM']))).rows).toHaveLength(1);
 });

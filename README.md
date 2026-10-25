@@ -4,6 +4,17 @@ DBMS Level 3 mini project. Disruption-aware airline platform built on **PostgreS
 
 **Team:** Aiman A Nawab (PES1UG24CS038) · Aditya
 
+## Current implementation
+
+Aiman's commercial database, identity/RBAC, passenger screens, feedback/notifications,
+local policy retrieval and query showcase are implemented. Integration tests use
+disposable databases with a test-only operations contract. **The operations schema,
+outbox dispatcher and connecting-flight API are still pending Aditya's work**;
+the main database cannot run the complete app until those dependencies are ready.
+See [commercial implementation and contracts](docs/commercial.md) and
+[verified test results](docs/testing.md). Do not reset existing Docker volumes to
+apply this work.
+
 ## Stack
 | Layer | Tech |
 |---|---|
@@ -39,6 +50,18 @@ docker compose exec ollama ollama pull llama3.2:3b
 | `npm run db:up` / `db:down` | start / stop the databases |
 | `npm run db:reset` | **wipes** volumes and re-runs all init scripts |
 | `npm run typecheck`, `npm run lint`, `npm test` | checks |
+| `npm run db:migrate` | checksum-tracked SQL migrations; refuses incomplete operations dependencies |
+| `npm run db:mongo:commercial` | feedback/notification validators and indexes |
+| `npm run db:seed:commercial` | 25 demo policies with local embeddings; optional admin bootstrap |
+| `npm run db:seed:demo` | optional demo passengers/bookings/payments (`SEED_DEMO_PASSWORD` required) |
+| `npm run feedback:index` | retryable Mongo feedback → pgvector indexing |
+| `npm run test:e2e:commercial` | production-build browser journey in disposable databases |
+
+Before browser tests, run `npx playwright install chromium` and `npm run build`.
+Tests require the Compose PostgreSQL/Mongo services and `.env` connection strings;
+they do not use or clear production tables. The browser test also downloads/caches
+the local embedding model on its first run. Set a random `AUTH_SECRET` before
+running the development app; tests provide a temporary secret automatically.
 
 ## Repository layout
 ```

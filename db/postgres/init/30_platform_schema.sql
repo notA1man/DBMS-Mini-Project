@@ -18,4 +18,11 @@ CREATE TABLE app_user (
 ALTER TABLE booking ADD CONSTRAINT booking_created_by_user_fk
   FOREIGN KEY (created_by_user) REFERENCES app_user ON DELETE RESTRICT;
 
+-- Identity-owned, persisted request budgets; no direct application table access.
+CREATE TABLE auth_rate_limit (
+  key text PRIMARY KEY CHECK (key ~ '^[a-f0-9]{64}$'),
+  bucket_start timestamptz NOT NULL,
+  attempts integer NOT NULL CHECK (attempts>0)
+);
+
 -- Aditya owns outbox_event. Its implementation belongs below this line.
