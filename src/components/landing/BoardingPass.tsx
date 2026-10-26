@@ -41,11 +41,19 @@ function bars(seed: string) {
   return out;
 }
 
-export const BoardingPass = forwardRef<HTMLDivElement, { magnetRef?: React.Ref<HTMLButtonElement> }>(
-  function BoardingPass({ magnetRef }, ref) {
+type PassProps = {
+  magnetRef?: React.Ref<HTMLButtonElement>;
+  initial?: { from?: string; to?: string; date?: string; pax?: string; type?: string };
+  onSearch?: (values: Record<string, string>) => void;
+  busy?: boolean;
+};
+
+export const BoardingPass = forwardRef<HTMLDivElement, PassProps>(
+  function BoardingPass({ magnetRef, initial, onSearch, busy = false }, ref) {
     const router = useRouter();
     const listId = useId();
-    const [form, setForm] = useState({ from: "BLR", to: "DEL", date: "", pax: "1" });
+    const [form, setForm] = useState({ from: initial?.from || "BLR", to: initial?.to || "DEL", date: initial?.date || "", pax: initial?.pax || "1" });
+    const [journey, setJourney] = useState(initial?.type || 'direct');
     const [errors, setErrors] = useState<Partial<Record<Field, string>>>({});
 
     const set = (k: Field) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -80,14 +88,15 @@ export const BoardingPass = forwardRef<HTMLDivElement, { magnetRef?: React.Ref<H
         date: parsed.data.date,
         pax: String(parsed.data.pax),
       });
-      router.push(`/search?${q}`);
+      if (onSearch) onSearch({ ...Object.fromEntries(q), type: journey });
+      else router.push(`/search?${q}`);
     };
 
     const from = AIRPORT_BY_CODE[form.from];
     const to = AIRPORT_BY_CODE[form.to];
 
     return (
-      <div ref={ref} className={styles.pass}>
+      <div ref={ref} className={`${styles.pass} ${onSearch ? `${styles.root} ${styles.standalonePass}` : ''}`}>
         <datalist id={listId}>
           {AIRPORTS.map((a) => (
             <option key={a.code} value={a.code}>
@@ -176,10 +185,15 @@ export const BoardingPass = forwardRef<HTMLDivElement, { magnetRef?: React.Ref<H
                   ))}
                 </select>
               </label>
-              <div className={styles.passField}>
+              {onSearch ? <label className={styles.passField}>
+                <span className={styles.passLabel}>JOURNEY</span>
+                <select className={styles.passInput} value={journey} onChange={e => setJourney(e.target.value)}>
+                  <option value="direct">Direct</option><option value="connecting">Connecting</option>
+                </select>
+              </label> : <div className={styles.passField}>
                 <span className={styles.passLabel}>GATE</span>
                 <span className={styles.passStatic}>—</span>
-              </div>
+              </div>}
               <div className={styles.passField}>
                 <span className={styles.passLabel}>SEAT</span>
                 <span className={styles.passStatic}>ANY</span>
@@ -204,8 +218,14 @@ export const BoardingPass = forwardRef<HTMLDivElement, { magnetRef?: React.Ref<H
                 <i key={i} style={{ width: w, opacity: i % 7 === 3 ? 0 : 1 }} />
               ))}
             </div>
-            <button ref={magnetRef} type="submit" className={styles.cta} data-magnetic>
-              <span>Find your flight</span>
+            <button ref={magnetRef} type="submit" className={styles.cta} data-magnetic disabled={busy}
+              onPointerMove={onSearch ? e => {
+                if (busy || e.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                const bounds = e.currentTarget.getBoundingClientRect();
+                e.currentTarget.style.transform = `translate(${(e.clientX - bounds.left - bounds.width / 2) * .09}px, ${(e.clientY - bounds.top - bounds.height / 2) * .14}px)`;
+              } : undefined}
+              onPointerLeave={onSearch ? e => { e.currentTarget.style.transform = ''; } : undefined}>
+              <span>{busy ? 'Searching…' : 'Find your flight'}</span>
               <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden>
                 <path d="M5 12h14M13 6l6 6-6 6" stroke="currentColor" strokeWidth="1.8" fill="none" />
               </svg>

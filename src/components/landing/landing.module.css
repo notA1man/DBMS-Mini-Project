@@ -622,6 +622,22 @@
   perspective: 1800px;
 }
 
+/* The search page uses the same ticket, fully assembled and ready to edit. */
+.standalonePass { width:100%;background:transparent; }
+.standalonePass .piece { --a:1;will-change:auto; }
+.standalonePass .passField { color:inherit; }
+.standalonePass .passMeta { grid-template-columns:1.4fr 1fr 1.2fr .6fr; }
+.standalonePass .passInput { color-scheme:light; }
+.standalonePass .cta:disabled { opacity:.6;cursor:wait; }
+.standalonePass .passMain { animation:assemble-main 1.4s .15s cubic-bezier(.19,1,.22,1) both; }
+.standalonePass .passPerf { animation:assemble-perf 1.2s .25s cubic-bezier(.19,1,.22,1) both; }
+.standalonePass .passStub { animation:assemble-stub 1.4s .3s cubic-bezier(.19,1,.22,1) both; }
+@keyframes assemble-main { from { opacity:0;transform:translate3d(-60px,40px,0) rotate(-3deg) rotateX(12deg); } to { opacity:1;transform:none; } }
+@keyframes assemble-perf { from { opacity:0;transform:translateY(-20px); } to { opacity:1;transform:none; } }
+@keyframes assemble-stub { from { opacity:0;transform:translate3d(60px,-30px,0) rotate(4deg); } to { opacity:1;transform:none; } }
+@media(max-width:900px) { .standalonePass .passMeta { grid-template-columns:1fr 1fr; } }
+@media(prefers-reduced-motion:reduce) { .standalonePass .piece { animation:none; } }
+
 .passCard {
   display: grid;
   grid-template-columns: 1fr 18px 290px;

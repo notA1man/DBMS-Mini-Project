@@ -46,7 +46,7 @@ function TicketCard({ t, onDone }: { t: Ticket; onDone: () => void }) {
     {options && <div className="stack">
       <small className="muted">Source: {options.source === 'neo4j' ? 'Neo4j CONNECTS_TO traversal' : 'PostgreSQL recursive CTE (graph unavailable)'} · availability confirmed in PostgreSQL</small>
       {options.itineraries.length === 0 && <p>No {t.fare_class} seats on any itinerary in the next 36 hours. Offer a full refund (the passenger can cancel from My Trips).</p>}
-      {options.itineraries.map((it, i) => <div key={i} className="flight-row" style={{ borderTop: '1px solid #dce4e1', paddingTop: '.8rem' }}>
+      {options.itineraries.map((it, i) => <div key={i} className="flight-row" style={{ borderTop: '1px solid var(--line)', paddingTop: '.8rem' }}>
         <div>{it.legs.map(l => <p key={l.flightId} className="mono">{l.flightNumber} {l.origin} {localTime(l.departureTime, l.origin, true)} → {l.destination} {localTime(l.arrivalTime, l.destination)} · {l.remaining} seats</p>)}
           <small>{Math.floor(it.totalMinutes / 60)}h {it.totalMinutes % 60}m · {it.connections ? `${it.connections} connection${it.connections > 1 ? 's' : ''}` : 'direct'} · fare value {money(it.totalFare)} (passenger pays nothing)</small></div>
         <button onClick={async () => {
