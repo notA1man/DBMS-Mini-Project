@@ -17,7 +17,16 @@
     "db:seed:commercial": "tsx scripts/seed-commercial.ts",
     "feedback:index": "tsx scripts/index-feedback.ts",
     "test:e2e:commercial": "tsx scripts/test-commercial-e2e.ts",
-    "db:seed:demo": "tsx scripts/seed-commercial-demo.ts"
+    "db:seed:demo": "tsx scripts/seed-commercial-demo.ts",
+    "db:seed:ops": "tsx scripts/seed-ops.ts",
+    "db:mongo:ops": "tsx scripts/mongo-ops.ts",
+    "outbox:drain": "tsx scripts/outbox-worker.ts --drain",
+    "worker": "tsx scripts/outbox-worker.ts",
+    "graph:reconcile": "tsx scripts/graph-reconcile.ts",
+    "db:seed:traffic": "tsx scripts/seed-demo-traffic.ts",
+    "bench:indexes": "tsx scripts/bench-indexes.ts",
+    "test:e2e:ops": "tsx scripts/test-ops-e2e.ts",
+    "test:stores": "vitest run src/server/tests/stores.test.ts --mode stores && tsx scripts/graph-reconcile.ts"
   },
   "dependencies": {
     "@huggingface/transformers": "^4.3.1",
