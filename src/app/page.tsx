@@ -1,2 +1,5 @@
-﻿import { Search } from '@/components/search';
-export default function Home(){return <Search/>;}
+import Landing from "@/components/landing/Landing";
+
+export default function Home() {
+  return <Landing />;
+}

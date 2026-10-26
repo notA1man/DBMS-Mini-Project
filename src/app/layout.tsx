@@ -1,43 +1,45 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import "./globals.css";
-import Link from 'next/link';
-import { auth,signOut } from '@/auth';
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
+// Self-hosted variable fonts (src/app/fonts/README.md): builds never depend on Google Fonts.
+const archivo = localFont({
+  src: "./fonts/archivo-var.woff2",
+  variable: "--font-archivo",
+  weight: "100 900",
+  display: "swap",
+  declarations: [{ prop: "font-stretch", value: "62% 125%" }],
 });
-
-const geistMono = Geist_Mono({
+const jetbrains = localFont({
+  src: "./fonts/jetbrains-mono-var.woff2",
+  variable: "--font-jetbrains",
+  weight: "100 800",
+  display: "swap",
+  fallback: ["ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+  adjustFontFallback: false,
+});
+const geistSans = localFont({ src: "./fonts/geist-var.woff2", variable: "--font-geist-sans", weight: "100 900", display: "swap" });
+const geistMono = localFont({
+  src: "./fonts/geist-mono-var.woff2",
   variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: "100 900",
+  display: "swap",
+  fallback: ["ui-monospace", "monospace"],
+  adjustFontFallback: false,
 });
 
 export const metadata: Metadata = {
-  title: "SkyOps | Your journey, together",
-  description: "Airline booking, check-in and journey management. A DBMS demonstration project.",
+  title: "SkyOps — Book the sky",
+  description: "Disruption-aware airline operations & ticketing platform. A DBMS demonstration project.",
 };
 
-export default async function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  const session=await auth();
+export const viewport: Viewport = { themeColor: "#05070b" };
+
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-      >
-        <header><Link className="brand" href="/">SKY<span>OPS</span><small>AIRLINE OPERATIONS</small></Link>
-          <nav aria-label="Main navigation"><Link href="/">Find flights</Link><Link href="/policies">Policies</Link><Link href="/trips">My Trips</Link><Link href="/showcase">DB Showcase</Link>
-            {['ADMIN','OPS'].includes(session?.user.role || '') && <><Link href="/ops/passengers">Passengers</Link><Link href="/ops/complaints">Complaints</Link></>}
-            {session?.user.role==='ADMIN' && <Link href="/admin/users">Users</Link>}
-            {session?<form action={async()=>{'use server';await signOut({redirectTo:'/'});}}><button className="subtle">Sign out</button></form>:<Link className="button" href="/login">Sign in</Link>}
-          </nav></header>
-        <main className="container">{children}</main>
-        <footer><strong>SKYOPS</strong><p>Airline operations & ticketing · DBMS project</p><small>Demo service. Payments and refunds are simulated.</small></footer>
+      <body className={`${archivo.variable} ${jetbrains.variable} ${geistSans.variable} ${geistMono.variable} antialiased`}>
+        {children}
       </body>
     </html>
   );
