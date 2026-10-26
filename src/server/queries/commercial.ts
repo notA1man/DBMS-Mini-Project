@@ -2,8 +2,7 @@
 export const commercialQueries={
   directFlights:`SELECT f.flight_id,f.flight_number,f.origin,f.destination,f.departure_time,f.arrival_time,
     f.flight_status,ff.fare_class,fn_dynamic_fare(f.flight_id,ff.fare_class) AS price,
-    ff.seats_allocated-(SELECT count(*) FROM ticket t WHERE t.flight_id=f.flight_id
-      AND t.fare_class=ff.fare_class AND t.ticket_status='Active') AS remaining
+    fn_seats_remaining(f.flight_id,ff.fare_class) AS remaining
     FROM flight f JOIN flight_fare ff USING(flight_id) JOIN airport a ON a.airport_code=f.origin
     WHERE f.origin=$1 AND f.destination=$2 AND f.departure_time>now()+interval '1 hour'
       AND f.departure_time >= $3::date::timestamp AT TIME ZONE a.timezone
@@ -16,10 +15,14 @@ export const commercialQueries={
     JOIN passenger p ON p.passenger_id=t.passenger_id WHERE t.booking_id=$1 ORDER BY t.ticket_seq`,
   receipts:`SELECT r.*,p.amount,p.payment_mode,p.gateway_ref FROM receipt r JOIN payment p USING(payment_id)
     WHERE p.booking_id=$1 ORDER BY r.receipt_date`,
+  // Name/email full-text OR exact PNR. Written as a UNION so each branch uses its own index
+  // (GIN on name_search, booking PK); a single WHERE ... OR EXISTS(...) forces a sequential scan.
+  // The PNR is cast to bpchar (booking_id's type): comparing as text would bypass the primary key.
   lookup:`SELECT p.passenger_id,p.first_name,p.last_name,p.email,
     ts_rank_cd(p.name_search,websearch_to_tsquery('simple',$1)) AS rank
-    FROM passenger p WHERE p.name_search @@ websearch_to_tsquery('simple',$1)
-      OR EXISTS(SELECT 1 FROM booking b WHERE b.passenger_id=p.passenger_id AND b.booking_id=upper($1))
+    FROM passenger p WHERE p.passenger_id IN (
+      SELECT passenger_id FROM passenger WHERE name_search @@ websearch_to_tsquery('simple',$1)
+      UNION SELECT passenger_id FROM booking WHERE length($1)=6 AND booking_id=upper($1)::bpchar)
     ORDER BY rank DESC,p.passenger_id LIMIT 30`,
   similar:`SELECT e.feedback_oid,e.flight_id,e.sentiment,e.created_at,1-(e.embedding <=> $1::vector) AS similarity
     FROM feedback_embedding e JOIN flight f USING(flight_id)
