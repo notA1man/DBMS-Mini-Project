@@ -26,3 +26,19 @@ CREATE TABLE auth_rate_limit (
 );
 
 -- Aditya owns outbox_event. Its implementation belongs below this line.
+-- Transactional outbox. Every state change that must reach Neo4j or MongoDB is written
+-- here in the SAME transaction as the change itself; the dispatcher (src/lib/outbox)
+-- claims rows with FOR UPDATE SKIP LOCKED, applies them idempotently and marks them done.
+CREATE TABLE outbox_event (
+  event_id     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  aggregate    text NOT NULL CHECK (aggregate ~ '^[a-z_]{2,30}$'),
+  aggregate_id text NOT NULL CHECK (length(aggregate_id) BETWEEN 1 AND 300),
+  event_type   text NOT NULL CHECK (event_type ~ '^[A-Z_]{3,40}$'),
+  payload      jsonb NOT NULL DEFAULT '{}'::jsonb CHECK (jsonb_typeof(payload) = 'object'),
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  processed_at timestamptz,
+  attempts     integer NOT NULL DEFAULT 0 CHECK (attempts >= 0),
+  last_error   text,
+  next_attempt_at timestamptz NOT NULL DEFAULT now()   -- exponential backoff after failures
+);
+COMMENT ON TABLE outbox_event IS 'At-least-once delivery to MongoDB/Neo4j. Consumers must be idempotent (keyed by event_id).';
