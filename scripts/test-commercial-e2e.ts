@@ -2,7 +2,7 @@ import { Pool } from 'pg';
 import { MongoClient } from 'mongodb';
 import { chromium,expect } from '@playwright/test';
 import { randomUUID,randomBytes } from 'node:crypto';
-import { readFile,mkdir,writeFile } from 'node:fs/promises';
+import { readFile,readdir,mkdir,writeFile } from 'node:fs/promises';
 import { spawn,type ChildProcess } from 'node:child_process';
 import { createServer } from 'node:net';
 import { initCommercialMongo } from '../db/mongo/commercial';
@@ -31,10 +31,10 @@ async function main() {
   const browser=await chromium.launch();
   try {
     await admin.query(`CREATE DATABASE "${database}"`);created=true;
-    for(const file of ['init/00_extensions.sql','init/02_domains.sql','tests/fixtures/ops_contract.sql',
-      'init/20_commercial_schema.sql','init/30_platform_schema.sql','init/40_vector_kb.sql','init/50_indexes.sql',
-      'init/60_views.sql','init/71_functions_commercial.sql','init/81_triggers_commercial.sql','init/90_rls_grants.sql']) {
-      await owner.query(await readFile(`db/postgres/${file}`,'utf8'));
+    const migrations=(await readdir('db/postgres/init')).filter(f=>f.endsWith('.sql')).sort().map(f=>`init/${f}`);
+    for(const file of [...migrations,'tests/fixtures/ops_data.sql']) {
+      const sql=await readFile(`db/postgres/${file}`,'utf8');
+      if(sql.replace(/--[^\n]*/g,'').trim()) await owner.query(sql);
     }
     await mongo.connect();await initCommercialMongo(mongoDb);
     const scriptEnv={...process.env,DATABASE_URL_OWNER:ownerUrl.toString(),MONGODB_DB:database,SEED_ADMIN_EMAIL:'',SEED_ADMIN_PASSWORD:'',SEED_DEMO_PASSWORD:'demo-test-password'};
@@ -95,7 +95,10 @@ async function main() {
     expect(explain.status()).toBe(200);expect((await explain.json()).plan).toBeTruthy();
     const crossOrigin=await context.request.post(`${base}/api/commercial/cancel`,{headers:{Origin:'https://untrusted.example'},data:{pnr,reason:'test'}});expect(crossOrigin.status()).toBe(403);
     await page.goto(`${base}/trips/${pnr}`);
-    await owner.query("UPDATE flight SET departure_time=now()-interval '3 hours',arrival_time=now()-interval '1 hour',flight_status='Landed' WHERE flight_id=1");
+    // The flight state machine requires Scheduled -> Boarding -> Departed -> Landed.
+    await owner.query("UPDATE flight SET departure_time=now()-interval '3 hours',arrival_time=now()-interval '1 hour',flight_status='Boarding' WHERE flight_id=1");
+    await owner.query("UPDATE flight SET flight_status='Departed' WHERE flight_id=1");
+    await owner.query("UPDATE flight SET flight_status='Landed' WHERE flight_id=1");
     await page.getByText('Leave feedback',{exact:true}).click();await page.getByLabel('Your experience').fill('The crew were very helpful throughout the flight.');
     await page.getByRole('button',{name:'Submit feedback'}).click();await expect(page.getByRole('status').filter({hasText:'Saved.'}).first()).toBeVisible();
     expect(await mongoDb.collection('feedback').countDocuments({embeddingStatus:'pending'})).toBe(1);

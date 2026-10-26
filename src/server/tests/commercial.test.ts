@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, expect, test } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
-import { readFile } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 import { commercialQueries } from '../queries/commercial';
 
@@ -10,6 +10,7 @@ const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
 const url = new URL(process.env.DATABASE_URL_OWNER!);
 url.pathname = `/${database}`;
 const owner = new Pool({ connectionString: url.toString(), max: 55 });
+owner.on('error', () => {}); // idle clients are terminated when the test database is dropped
 let created = false;
 let booking: string;
 
@@ -34,10 +35,11 @@ const book = (c: PoolClient, flightId=1, seatNumber: string | null='1A', passeng
 beforeAll(async () => {
   await admin.query(`CREATE DATABASE "${database}"`);
   created = true;
-  for (const file of ['init/00_extensions.sql','init/02_domains.sql','tests/fixtures/ops_contract.sql',
-    'init/20_commercial_schema.sql','init/30_platform_schema.sql','init/40_vector_kb.sql','init/50_indexes.sql',
-    'init/60_views.sql','init/71_functions_commercial.sql','init/81_triggers_commercial.sql','init/90_rls_grants.sql']) {
-    await owner.query(await readFile(`db/postgres/${file}`, 'utf8'));
+  // Real migrations in production order (placeholders skipped), then deterministic test data.
+  const migrations = (await readdir('db/postgres/init')).filter(f => f.endsWith('.sql')).sort().map(f => `init/${f}`);
+  for (const file of [...migrations, 'tests/fixtures/ops_data.sql']) {
+    const sql = await readFile(`db/postgres/${file}`, 'utf8');
+    if (sql.replace(/--[^\n]*/g, '').trim()) await owner.query(sql);
   }
   await owner.query(`INSERT INTO passenger(first_name,last_name,date_of_birth,email)
     SELECT 'Passenger',n::text,'2000-01-01','test'||n||'@example.com' FROM generate_series(1,60) n`);
@@ -203,7 +205,10 @@ test('additional travelers and booking are atomic; booker can read companion det
 });
 
 test('crew can read only assigned manifests and cannot read financial rows',async()=>{
-  await owner.query('INSERT INTO crew VALUES(1),(2); INSERT INTO crew_assignment VALUES(1,2)');
+  await owner.query(`INSERT INTO crew(crew_name,designation,license_number,salary,hire_date,base_airport)
+    VALUES ('Test Crew One','Purser','TEST-CREW-1',1,'2020-01-01','BLR'),('Test Crew Two','Purser','TEST-CREW-2',1,'2020-01-01','BLR')`);
+  await owner.query(`INSERT INTO crew_assignment(crew_id,flight_id,role_on_flight,duty_start,duty_end)
+    SELECT 1, flight_id, 'Purser', departure_time - interval '30 minutes', arrival_time + interval '15 minutes' FROM flight WHERE flight_id=2`);
   const ids=(await owner.query(`INSERT INTO app_user(email,password_hash,role,crew_id)
     VALUES('crew1@example.com','test-only','CREW',1),('crew2@example.com','test-only','CREW',2) RETURNING user_id`)).rows;
   const assigned=Number(ids[0].user_id),unassigned=Number(ids[1].user_id);
