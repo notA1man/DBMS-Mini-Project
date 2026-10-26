@@ -12,7 +12,7 @@ export const commercialValidators:Record<string,Document>={
       sentiment:{enum:['positive','neutral','negative']},createdAt:{bsonType:'date'},
       embeddingStatus:{enum:['pending','ready']}}}},
   notifications:{$jsonSchema:{bsonType:'object',required:['_id','userId','kind','title','body','link','read','createdAt'],
-    properties:{_id:{bsonType:'string'},userId:id,kind:{enum:['BOOKING_CONFIRMED','BOOKING_CANCELLED','FLIGHT_CANCELLED','FLIGHT_DELAYED']},
+    properties:{_id:{bsonType:'string'},userId:id,kind:{enum:['BOOKING_CONFIRMED','BOOKING_CANCELLED','FLIGHT_CANCELLED','FLIGHT_DELAYED','BOOKING_REBOOKED']},
       title:{bsonType:'string',minLength:1,maxLength:160},body:{bsonType:'string',maxLength:3000},
       link:{bsonType:'string',pattern:'^/'},read:{bsonType:'bool'},createdAt:{bsonType:'date'}}}},
 };
