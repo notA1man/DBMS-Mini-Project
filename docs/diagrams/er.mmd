@@ -1,0 +1,109 @@
+erDiagram
+  AIRPORT ||--o{ FLIGHT : "origin / destination"
+  AIRPORT ||--o{ CREW : "base"
+  AIRCRAFT ||--|{ SEAT : "has (weak)"
+  AIRCRAFT ||--o{ FLIGHT : "operates"
+  FLIGHT ||--|{ FLIGHT_FARE : "sells (weak)"
+  FLIGHT ||--o{ CREW_ASSIGNMENT : "crewed by"
+  CREW ||--o{ CREW_ASSIGNMENT : "works"
+  CREW ||--o{ CREW_CERTIFICATION : "holds (multivalued)"
+  CREW |o--o{ CREW : "supervises"
+  PASSENGER ||--o{ PASSENGER_PHONE : "has (multivalued)"
+  PASSENGER ||--o{ BOOKING : "books"
+  BOOKING ||--|{ TICKET : "contains (weak)"
+  TICKET }o--|| FLIGHT : "for"
+  TICKET }o--|| PASSENGER : "travels"
+  TICKET }o--o| SEAT : "assigned"
+  TICKET |o--o| TICKET : "replaces"
+  TICKET ||--o{ BAGGAGE : "checks (weak of weak)"
+  BOOKING ||--o{ PAYMENT : "paid by"
+  PAYMENT ||--|| RECEIPT : "issues"
+  APP_USER |o--o| PASSENGER : "is"
+  APP_USER |o--o| CREW : "is"
+  APP_USER ||--o{ BOOKING : "created"
+  KB_DOCUMENT ||--|{ KB_CHUNK : "chunked into"
+  FLIGHT ||--o{ FEEDBACK_EMBEDDING : "reviewed"
+
+  AIRPORT { d_iata_code airport_code PK
+    text airport_name UK
+    text timezone "IANA, trigger-checked"
+    numeric latitude
+    numeric longitude
+    tsvector name_search "generated" }
+  AIRCRAFT { bigint aircraft_id PK
+    text registration UK
+    text type_rating
+    int capacity "= count(seat), deferred check"
+    text status }
+  SEAT { bigint aircraft_id PK,FK
+    text seat_number PK
+    d_fare_class seat_class
+    text seat_position
+    bool is_exit_row }
+  FLIGHT { bigint flight_id PK
+    text flight_number
+    timestamptz departure_time
+    timestamptz arrival_time
+    text flight_status "state machine"
+    int duration_minutes "generated"
+    int delay_minutes
+    text delay_reason
+    text cancel_reason }
+  FLIGHT_FARE { bigint flight_id PK,FK
+    d_fare_class fare_class PK
+    d_money base_fare
+    int seats_allocated }
+  CREW { bigint crew_id PK
+    text crew_name
+    text designation
+    text license_number UK
+    d_money salary "admin-only"
+    bigint supervisor_id FK }
+  CREW_CERTIFICATION { bigint crew_id PK,FK
+    text certification PK
+    date valid_until }
+  CREW_ASSIGNMENT { bigint crew_id PK,FK
+    bigint flight_id PK,FK
+    text role_on_flight
+    timestamptz duty_start "EXCLUDE overlap"
+    timestamptz duty_end
+    text standby_status }
+  PASSENGER { bigint passenger_id PK
+    d_email email UK
+    bytea passport_no_enc "pgcrypto"
+    tsvector name_search "generated" }
+  PASSENGER_PHONE { bigint passenger_id PK,FK
+    d_phone phone_number PK }
+  BOOKING { char6 booking_id PK "PNR"
+    text booking_status
+    d_money total_amount
+    d_money amount_paid
+    d_money refund_amount }
+  TICKET { char6 booking_id PK,FK
+    smallint ticket_seq PK
+    d_fare_class fare_class
+    d_money fare_amount
+    text ticket_status
+    text checkin_status
+    text seat_number FK
+    smallint replaces_seq FK }
+  BAGGAGE { char6 booking_id PK,FK
+    smallint ticket_seq PK,FK
+    smallint bag_seq PK
+    numeric weight_kg }
+  PAYMENT { bigint payment_id PK
+    d_money amount
+    text gateway_ref UK }
+  RECEIPT { bigint receipt_id PK
+    bigint payment_id UK,FK }
+  APP_USER { bigint user_id PK
+    d_email email UK
+    text role
+    bigint passenger_id UK,FK
+    bigint crew_id UK,FK }
+  KB_DOCUMENT { bigint doc_id PK
+    tsvector fts }
+  KB_CHUNK { bigint chunk_id PK
+    vector384 embedding "HNSW cosine" }
+  FEEDBACK_EMBEDDING { text feedback_oid PK "Mongo _id"
+    vector384 embedding }

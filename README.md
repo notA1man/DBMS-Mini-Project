@@ -6,14 +6,19 @@ DBMS Level 3 mini project. Disruption-aware airline platform built on **PostgreS
 
 ## Current implementation
 
-Aiman's commercial database, identity/RBAC, passenger screens, feedback/notifications,
-local policy retrieval and query showcase are implemented. Integration tests use
-disposable databases with a test-only operations contract. **The operations schema,
-outbox dispatcher and connecting-flight API are still pending Aditya's work**;
-the main database cannot run the complete app until those dependencies are ready.
-See [commercial implementation and contracts](docs/commercial.md) and
-[verified test results](docs/testing.md). Do not reset existing Docker volumes to
-apply this work.
+Both halves are implemented and integrated:
+
+- **Commercial (Aiman)** — identity/RBAC, search, booking, payments, check-in and boarding passes,
+  baggage, feedback and notifications, local policy retrieval, query showcase.
+  See [commercial.md](docs/commercial.md).
+- **Operations (Aditya)** — airports, fleet and seat maps, scheduling with no-overlap exclusion
+  constraints, crew legality and rostering, delay knock-on propagation, cancellation and joint
+  rebooking, the transactional outbox feeding MongoDB and Neo4j, connecting-flight search, live
+  departures board, ops/crew/admin screens and the landing page.
+  See [operations.md](docs/operations.md), the [ER diagram](docs/diagrams/er.svg) and the
+  [index benchmark](docs/benchmarks.md).
+
+Test results: [testing.md](docs/testing.md).
 
 ## Stack
 | Layer | Tech |
@@ -34,8 +39,14 @@ git clone <repo-url> && cd DBMS-Mini-Project
 cp .env.example .env        # then change the passwords
 npm install
 npm run db:up               # Postgres, Mongo, Neo4j (first start runs db/postgres/init/*)
-npm run dev                 # http://localhost:3000
+npm run db:seed:ops         # crew, flights, rosters (set SEED_STAFF_PASSWORD for staff logins)
+npm run db:mongo:commercial && npm run db:mongo:ops
+npm run db:seed:commercial  # policies + local embeddings
+npm run outbox:drain        # project everything into MongoDB and Neo4j
+npm run dev                 # http://localhost:3000  (run `npm run worker` alongside)
 ```
+**Existing volumes from before the operations schema landed:** run `npm run db:reset` once
+(it wipes the volumes) — the init scripts only run on an empty volume.
 Health check of all three databases: http://localhost:3000/api/health
 Neo4j Browser: http://localhost:7474
 
@@ -50,12 +61,20 @@ docker compose exec ollama ollama pull llama3.2:3b
 | `npm run db:up` / `db:down` | start / stop the databases |
 | `npm run db:reset` | **wipes** volumes and re-runs all init scripts |
 | `npm run typecheck`, `npm run lint`, `npm test` | checks |
-| `npm run db:migrate` | checksum-tracked SQL migrations; refuses incomplete operations dependencies |
+| `npm run db:migrate` | checksum-tracked SQL migrations for a database not created by Compose init |
 | `npm run db:mongo:commercial` | feedback/notification validators and indexes |
 | `npm run db:seed:commercial` | 25 demo policies with local embeddings; optional admin bootstrap |
 | `npm run db:seed:demo` | optional demo passengers/bookings/payments (`SEED_DEMO_PASSWORD` required) |
 | `npm run feedback:index` | retryable Mongo feedback → pgvector indexing |
 | `npm run test:e2e:commercial` | production-build browser journey in disposable databases |
+| `npm run db:seed:ops` | crew, 5 weeks of flights, legality-checked rosters, optional staff logins |
+| `npm run db:mongo:ops` | ops collections (time series, validators, TTL) + maintenance history |
+| `npm run db:seed:traffic` | optional synthetic bookings for realistic loads (`DEMO_LOAD`) |
+| `npm run outbox:drain` / `npm run worker` | deliver outbox events once / continuously |
+| `npm run graph:reconcile` | rebuild the Neo4j graph from PostgreSQL |
+| `npm run test:stores` | MongoDB + Neo4j integration tests (replaces graph contents, then rebuilds) |
+| `npm run test:e2e:ops` | ops/crew/admin browser journey in a disposable database |
+| `npm run bench:indexes` | EXPLAIN ANALYZE with vs without each key index → `docs/benchmarks.md` |
 
 Before browser tests, run `npx playwright install chromium` and `npm run build`.
 Tests require the Compose PostgreSQL/Mongo services and `.env` connection strings;
@@ -66,9 +85,9 @@ running the development app; tests provide a temporary secret automatically.
 ## Repository layout
 ```
 db/postgres/init/   ordered SQL run on first container start (00 ext … 95 seed)
-db/postgres/tests/  pgTAP tests
-db/mongo/           collection validators and notes
-db/neo4j/           graph constraints and Cypher queries
+db/postgres/tests/  test fixtures (tests are Vitest: src/server/tests)
+db/mongo/           collection validators, indexes, aggregation pipelines
+db/neo4j/           graph model and constraints (code in src/lib/graph)
 scripts/            seeding, outbox worker, graph reconcile
 src/app/            Next.js routes (UI + /api)
 src/lib/db/         PostgreSQL / MongoDB / Neo4j clients

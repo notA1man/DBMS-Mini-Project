@@ -9,15 +9,16 @@ the outbox dispatcher. This document is the integration contract for those areas
 The commercial PostgreSQL foundation is implemented in `02`, `20`, the
 `app_user` section of `30`, `40`, the commercial sections of `50`/`60`, `71`,
 `81`, and `90`. Operations placeholders are deliberately not implemented here.
-Tests use a **test-only** operations contract in
-`db/postgres/tests/fixtures/ops_contract.sql`; it must never be deployed.
+Tests now load the **real** migrations (operations included) followed by the
+test-only data file `db/postgres/tests/fixtures/ops_data.sql`, which reproduces the
+original fixture's flights, seats and fares; it must never be deployed.
 
 The application now includes `/login`, `/register`, direct flight search,
 `/book` (companions and multiple legs), `/trips`, check-in/QR boarding passes,
 receipts, baggage and cancellation, feedback and notifications, `/policies`,
 `/admin/users`, `/ops/passengers`, `/ops/complaints`, and `/showcase`.
 These use the same commercial SQL tested in isolation. Connecting search consumes
-Aditya's future endpoint; it is not a working graph integration yet.
+Aditya's `/api/search/itineraries` (Neo4j with a recursive-CTE fallback; see operations.md).
 
 ## Problem, objectives and functional requirements
 
@@ -78,8 +79,8 @@ shared audit integration; no cross-store atomicity is claimed for native writes.
 
 The connection-search UI currently expects a proposed response contract:
 `{itineraries:[{legs:[{flightId,flightNumber,origin,destination,departureTime,arrivalTime}],totalFare}]}`.
-IDs are strings, timestamps ISO-8601, and fares INR. Agree this response shape
-with Aditya before integration; the plan specified only the endpoint and inputs.
+IDs are strings, timestamps ISO-8601, and fares INR. Aditya's endpoint implements
+this shape (legs also carry `price`, plus `totalMinutes`, `connections` and a top-level `source`).
 The UI sends `from,to,date,pax` to `GET /api/search/itineraries` and treats the
 returned fare as indicative; PostgreSQL reprices and validates at booking time.
 
@@ -195,8 +196,8 @@ aggregation is exported from `db/mongo/commercial.ts` for the shared analytics p
 
 The notification consumer is `deliverCommercialNotification` in
 `src/lib/outbox/commercial.ts`. Its stable `_id=outbox:<event_id>` and `$setOnInsert`
-preserve read state and TTL dates across retries. This handler is implemented;
-Aditya's actual outbox dispatcher is still required to call it.
+preserve read state and TTL dates across retries. The outbox dispatcher
+(`src/lib/outbox/dispatcher.ts`) calls it.
 
 ## Running and seeding
 
@@ -237,13 +238,13 @@ Showcase queries: `SELECT * FROM fn_seat_map($1)`; owned
 
 `npm test -- src/server/tests/commercial.test.ts` creates a uniquely named
 disposable PostgreSQL database using `DATABASE_URL_OWNER`, loads the exact
-commercial SQL with the operations fixture, tests through `SET LOCAL ROLE
+full migration set plus `ops_data.sql`, tests through `SET LOCAL ROLE
 skyops_app`, then drops only that database. It does not reset Docker volumes.
 The role must already exist (Compose initialization creates it).
 
-Operations migrations, seed flights, graph itinerary API, flight-cancellation
-integration and notification dispatch require Aditya's implementation. A
-fixture test passing is not evidence of those production integrations working.
+Operations migrations, seed flights, the graph itinerary API, cancellation/rebooking
+and notification dispatch are now implemented (operations.md); the commercial tests
+run against the real operations schema.
 Desktop/mobile landing screenshots and a boarding-pass/feedback screen were
 visually inspected. Cloud deployment, production migrations, full visual acceptance,
 benchmark evidence and joint disruption E2E remain separate acceptance checks.

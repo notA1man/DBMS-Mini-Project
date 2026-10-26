@@ -72,15 +72,91 @@ Desktop/mobile landing screenshots and the boarding-pass/feedback screen were
 visually inspected for layout. This is not a full visual acceptance pass over
 every role and form.
 
-## Evidence boundaries and remaining work
+## Evidence boundaries (commercial run, 2026-10-25)
 
-Operations tables are supplied by a **test fixture**, not Aditya's production SQL.
-Therefore these results do not establish working operations exclusion constraints,
-graph search, flight-disruption rebooking, actual outbox polling/delivery, or full
-fresh-volume Docker initialization. The connection-search response contract is
-proposed in `commercial.md` and still needs agreement.
+That run used a test fixture for the operations tables. Since then the commercial tests load
+the real operations migrations (see the operations section below), so the boundaries listed at
+the time — operations constraints, graph search, rebooking, outbox delivery, benchmarks — are now
+covered there. Cloud deployment and the final combined report remain outside this document.
 
-Performance benchmarks on 100k tickets, pgTAP, joint disruption E2E, cloud deployment,
-the final combined report/PDF and full application visual acceptance remain pending.
-No index speedup or deployment success is claimed. Browser checks cover the core
-passenger flow; SQL tests cover cancellation, baggage and companion permissions.
+# Aditya's operations verification — 2026-10-26
+
+Environment: PostgreSQL 16.15 + pgvector 0.6, Node 22, Next.js 15 production build. MongoDB and
+Neo4j were **not** reachable in this environment; the suites that need them skip themselves
+(see "Not yet run" below).
+
+## Results
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck | `npm run typecheck` | clean |
+| Lint | `npm run lint` | clean |
+| Unit / integration (all suites) | `npm test` | **53 passed**, 8 skipped (store suites); `mongo-commercial.test.ts` fails at its hook only because MongoDB is unreachable here |
+| — operations SQL | `src/server/tests/ops.test.ts` | 22 / 22 |
+| — outbox dispatcher | `src/server/tests/outbox.test.ts` | 5 / 5 |
+| — commercial (now on the real ops schema) | `src/server/tests/commercial.test.ts` | 26 / 26 |
+| Production build | `npm run build` | passes (45 app routes) |
+| Ops browser journey | `npm run test:e2e:ops` | **11 / 11** |
+| Index benchmark | `npm run bench:indexes` | [benchmarks.md](benchmarks.md) |
+
+All database tests run in a uniquely named disposable database built from the real
+`db/postgres/init/*.sql`, through the least-privilege `skyops_app` role, and drop it afterwards.
+
+## Operations SQL tests (`ops.test.ts`)
+
+Constraints and triggers — each with an accepted and a refused case:
+seat maps must match aircraft capacity (deferred, checked at COMMIT) · seat-map generator assigns
+window/middle/aisle and exit rows · airport time zones validated against IANA · an aircraft
+cannot fly overlapping sectors or skip its 45-minute turnaround (`EXCLUDE`, SQLSTATE 23P01) ·
+fare buckets only for cabins the aircraft has · only ops staff can schedule and the app role
+cannot write tables directly · flight status state machine.
+
+Crew: the legality report explains each rule · illegal assignments are refused naming the rule ·
+a full legal crew completes the flight · crew must be at the departure airport and cannot
+overlap duties · boarding is blocked until the crew is complete · RLS: crew see their own duties
+and colleagues on those flights, passengers see no crew · salaries hidden from the app role ·
+recursive supervisor chain survives a cycle.
+
+Disruption: a delay pushes the aircraft's rotation (knock-on) and moves crew duties, releasing
+a crew member's later conflicting duty · cancelling disrupts tickets and bookings, frees crew and
+queues notifications · ops re-books a disrupted passenger on the same PNR at no extra cost.
+
+Outbox and analytics: two dispatchers never claim the same event (`FOR UPDATE SKIP LOCKED`, two
+concurrent transactions) · failures back off exponentially and completion is idempotent · state
+changes and audit entries commit together · the revenue materialized view refreshes concurrently.
+
+## Outbox dispatcher tests (`outbox.test.ts`)
+
+Real PostgreSQL outbox, in-memory Mongo/Neo4j stand-ins: one snapshot becomes typed time-series
+events with stable idempotency keys · boarding/cancellation/retime types · each event type
+reaches its consumers and is marked processed · a failing consumer only fails its own events,
+which back off and are retried · without Neo4j configured, graph events stay pending.
+
+## Browser journey (`test:e2e:ops`)
+
+Production build against a freshly seeded disposable database:
+
+1. Database seeded (flights, crew, rosters, staff logins); Mongo absent so fallbacks exercised
+2. Ops staff land on the ops console with live KPIs
+3. Scheduling works; a turnaround clash is rejected by `flight_aircraft_no_overlap`
+4. Crew picker shows rule-by-rule legality and assigns a legal purser
+5. A 150-minute delay propagates to the aircraft's next sector
+6. Cancelling a booked flight disrupts its tickets and bookings in one transaction
+7. The disrupted passenger is re-booked on the same PNR at no extra cost (booking back to Confirmed)
+8. DB showcase demonstrates the exclusion constraint with a savepoint rollback
+9. Public departures board renders; the itinerary API answers (recursive-CTE source here)
+10. Crew see their roster and assigned manifests only; ops pages and APIs are denied
+11. Admin analytics, fleet and outbox screens render
+
+Two real bugs were found and fixed by this run: zod 4's `z.record(enum, …)` requires every key
+(fares are now `z.partialRecord`), and the crew picker briefly kept the previous role's
+candidates clickable after switching role (now keyed by role).
+
+## Not yet run (needs the Docker services)
+
+- `npm run test:stores` — Mongo validators, exactly-once delivery, newest-snapshot-wins, and the
+  Neo4j test that graph traversal and the recursive CTE return **identical** itineraries plus
+  connection removal on cancellation.
+- `npm test -- src/server/tests/mongo-commercial.test.ts` (Aiman's Mongo suite).
+- Fresh-volume `npm run db:reset` through Compose (the same SQL files were applied in order here).
+- Cloud deployment.
