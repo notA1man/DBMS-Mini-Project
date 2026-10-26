@@ -32,6 +32,17 @@ body {
   color: #05070b;
 }
 
+/* Hide scrollbar chrome throughout the site while preserving scrolling. */
+* {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+  width: 0;
+  height: 0;
+}
+
 /* Reduced motion: the landing's scroll flight snaps between key moments instead of scrubbing. */
 @media (prefers-reduced-motion: reduce) {
   html:has([data-landing]) {

@@ -59,7 +59,6 @@ export default function Landing() {
   const dawn = useRef<HTMLDivElement>(null);
   const pass = useRef<HTMLDivElement>(null);
   const magnet = useRef<HTMLButtonElement>(null);
-  const cursor = useRef<HTMLDivElement>(null);
   const hud = {
     alt: useRef<HTMLSpanElement>(null),
     kts: useRef<HTMLSpanElement>(null),
@@ -134,14 +133,8 @@ export default function Landing() {
         .catch(() => {});
     };
 
-    // ---- cursor + magnetic CTA ---------------------------------------------
-    const mouse = { x: -100, y: -100, cx: -100, cy: -100, hot: false, hide: false };
+    // ---- magnetic CTA ------------------------------------------------------
     const onMove = (e: PointerEvent) => {
-      mouse.x = e.clientX;
-      mouse.y = e.clientY;
-      const t = e.target as HTMLElement | null;
-      mouse.hide = !!t?.closest("input, select, textarea");
-      mouse.hot = !mouse.hide && !!t?.closest("a, button, label");
       const btn = magnet.current;
       if (btn && !reduced) {
         const r = btn.getBoundingClientRect();
@@ -151,9 +144,7 @@ export default function Landing() {
         btn.style.transform = near ? `translate(${dx * 0.25}px, ${dy * 0.35}px)` : "";
       }
     };
-    const useCursor = finePointer && !reduced;
-    if (useCursor) {
-      root.current!.classList.add(styles.cursorOn);
+    if (finePointer && !reduced) {
       window.addEventListener("pointermove", onMove, { passive: true });
     }
 
@@ -291,14 +282,6 @@ export default function Landing() {
         hudRefs.clock.current.textContent = `T+${pad(Math.floor(s / 3600), 2)}:${pad((s / 60) % 60, 2)}`;
       }
 
-      // cursor
-      if (useCursor && cursor.current) {
-        mouse.cx = lerp(mouse.cx, mouse.x, 0.25);
-        mouse.cy = lerp(mouse.cy, mouse.y, 0.25);
-        cursor.current.style.transform = `translate3d(${mouse.cx}px, ${mouse.cy}px, 0)`;
-        cursor.current.dataset.hot = mouse.hot ? "1" : "0";
-        cursor.current.dataset.hide = mouse.hide ? "1" : "0";
-      }
     };
 
     measure();
@@ -438,10 +421,6 @@ export default function Landing() {
             </span>
           ))}
         </div>
-      </div>
-
-      <div ref={cursor} className={styles.cursor} aria-hidden>
-        <i />
       </div>
 
       <div className={styles.loader} aria-live="polite">

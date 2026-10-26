@@ -466,50 +466,6 @@
   background: var(--ink-faint);
 }
 
-/* reticle cursor */
-.cursor {
-  position: fixed;
-  z-index: 50;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  display: none;
-}
-
-.cursorOn .cursor { display: block; }
-
-.cursorOn,
-.cursorOn a,
-.cursorOn button,
-.cursorOn label { cursor: none; }
-
-.cursor i {
-  position: absolute;
-  width: 30px;
-  height: 30px;
-  margin: -15px 0 0 -15px;
-  border: 1px solid rgba(232, 237, 244, 0.7);
-  border-radius: 50%;
-  transition: transform 0.25s cubic-bezier(0.19, 1, 0.22, 1), opacity 0.2s, border-color 0.2s;
-}
-
-.cursor i::before,
-.cursor i::after {
-  content: "";
-  position: absolute;
-  background: rgba(232, 237, 244, 0.85);
-}
-
-.cursor i::before { left: 50%; top: -6px; bottom: -6px; width: 1px; margin-left: -0.5px; clip-path: polygon(0 0, 100% 0, 100% 22%, 0 22%, 0 78%, 100% 78%, 100% 100%, 0 100%); }
-.cursor i::after { top: 50%; left: -6px; right: -6px; height: 1px; margin-top: -0.5px; clip-path: polygon(0 0, 22% 0, 22% 100%, 0 100%, 0 0, 78% 0, 100% 0, 100% 100%, 78% 100%); }
-
-.cursor[data-hot="1"] i {
-  transform: scale(1.7);
-  border-color: var(--accent);
-}
-
-.cursor[data-hide="1"] i { opacity: 0; }
-
 /* loader */
 .loader {
   position: fixed;
