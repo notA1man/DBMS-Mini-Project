@@ -12,7 +12,9 @@ export function LoginForm({register=false}:{register?:boolean}) {
         if(register) await request('/api/register',fields);
         const result=await signIn('credentials',{email:fields.email,password:fields.password,redirect:false});
         if(result?.error) throw new Error('Sign-in failed. Check your details or try again after 15 minutes.');
-        window.location.href='/trips';
+        // Each role lands on its own home: passengers -> My Trips, ops/admin -> Ops console, crew -> roster.
+        const {user}=await request<{user:{role:string}}>('/api/commercial/identity');
+        window.location.href=user.role==='CREW'?'/crew':['ADMIN','OPS'].includes(user.role)?'/ops':'/trips';
       }catch(e){setError((e as Error).message);setBusy(false);}
     }}>
       {register && <><label>First name<input name="firstName" autoComplete="given-name" required maxLength={80}/></label>

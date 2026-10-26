@@ -1,27 +1,38 @@
 'use client';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useCallback,useEffect,useRef,useState } from 'react';
 import { request,money,date } from './api';
 type Flight={flight_id:string;flight_number:string;origin:string;destination:string;departure_time:string;arrival_time:string;fare_class:string;price:string;remaining:string};
 type Itinerary={legs:{flightId:string;flightNumber:string;origin:string;destination:string;departureTime:string;arrivalTime:string}[];totalFare:number};
-export function Search() {
+export type SearchInitial={from?:string;to?:string;date?:string;pax?:string;type?:string};
+export function Search({initial={}}:{initial?:SearchInitial}={}) {
   const [flights,setFlights]=useState<Flight[]>([]),[itineraries,setItineraries]=useState<Itinerary[]>([]);
   const [status,setStatus]=useState(''),[busy,setBusy]=useState(false);
+  const run=useCallback(async(values:Record<string,string>)=>{
+    setBusy(true);setStatus('');setFlights([]);setItineraries([]);
+    const query=new URLSearchParams(values);
+    try {
+      if(values.type==='connecting') {const result=await request<{itineraries:Itinerary[]}>(`/api/search/itineraries?${query}`);setItineraries(result.itineraries);if(!result.itineraries.length)setStatus('No matching connections. Try another date.');}
+      else {const result=await request<{flights:Flight[]}>(`/api/search/flights?${query}`);setFlights(result.flights);if(!result.flights.length)setStatus('No direct flights that day. Try a connecting journey.');}
+    } catch(e){setStatus((e as Error).message);}finally{setBusy(false);}
+  },[]);
+  // Arriving from the landing page's boarding pass (/search?from=..&to=..&date=..&pax=..) runs the search straight away.
+  const auto=useRef(false);
+  useEffect(()=>{
+    if(auto.current || !initial.from || !initial.to || !initial.date) return;
+    auto.current=true;
+    void run({from:initial.from,to:initial.to,date:initial.date,pax:initial.pax || '1',type:initial.type || 'direct'});
+  },[initial,run]);
   return <><section className="hero"><p className="eyebrow">A CLEARER WAY TO FLY</p><h1>Good journeys<br/>start with a plan.</h1>
     <p>Find your flight. Choose your seat. Keep every detail of your journey together.</p></section>
-    <section className="card"><form className="search-grid" onSubmit={async event=>{
-      event.preventDefault();setBusy(true);setStatus('');setFlights([]);setItineraries([]);
-      const values=Object.fromEntries(new FormData(event.currentTarget));const query=new URLSearchParams(values as Record<string,string>);
-      try {
-        if(values.type==='connecting') {const result=await request<{itineraries:Itinerary[]}>(`/api/search/itineraries?${query}`);setItineraries(result.itineraries);if(!result.itineraries.length)setStatus('No matching connections. Try another date.');}
-        else {const result=await request<{flights:Flight[]}>(`/api/search/flights?${query}`);setFlights(result.flights);if(!result.flights.length)setStatus('No matching flights. Try another date.');}
-      } catch(e){setStatus((e as Error).message);}finally{setBusy(false);}
+    <section className="card"><form className="search-grid" onSubmit={event=>{
+      event.preventDefault();void run(Object.fromEntries(new FormData(event.currentTarget)) as Record<string,string>);
     }}>
-      <label>From<input name="from" defaultValue="BLR" pattern="[A-Z]{3}" maxLength={3} required aria-label="Origin airport code"/></label>
-      <label>To<input name="to" defaultValue="BOM" pattern="[A-Z]{3}" maxLength={3} required aria-label="Destination airport code"/></label>
-      <label>Departure<input type="date" name="date" required defaultValue={new Date(Date.now()+86400000).toISOString().slice(0,10)}/></label>
-      <label>Travelers<select name="pax">{[1,2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</select></label>
-      <label>Journey<select name="type"><option value="direct">Direct</option><option value="connecting">Connecting</option></select></label>
+      <label>From<input name="from" defaultValue={initial.from || 'BLR'} pattern="[A-Z]{3}" maxLength={3} required aria-label="Origin airport code"/></label>
+      <label>To<input name="to" defaultValue={initial.to || 'BOM'} pattern="[A-Z]{3}" maxLength={3} required aria-label="Destination airport code"/></label>
+      <label>Departure<input type="date" name="date" required defaultValue={initial.date || new Date(Date.now()+86400000).toISOString().slice(0,10)}/></label>
+      <label>Travelers<select name="pax" defaultValue={initial.pax || '1'}>{[1,2,3,4,5,6].map(n=><option key={n}>{n}</option>)}</select></label>
+      <label>Journey<select name="type" defaultValue={initial.type || 'direct'}><option value="direct">Direct</option><option value="connecting">Connecting</option></select></label>
       <button disabled={busy}>{busy?'Searching…':'Find flights →'}</button>
     </form><p role="status">{status}</p></section>
     <div className="stack results">{flights.map(f=><article className="card flight-row" key={`${f.flight_id}-${f.fare_class}`}>
