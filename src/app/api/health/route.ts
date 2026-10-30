@@ -24,7 +24,8 @@ export async function GET() {
       );
       return rows[0];
     }),
-    check(async () => (await mongoDb()).command({ ping: 1 })),
+    // Only the ping result: the raw reply also carries the cluster-time signature.
+    check(async () => ({ ok: (await (await mongoDb()).command({ ping: 1 })).ok })),
     check(async () => (await neo4jDriver.getServerInfo()).agent),
   ]);
   const ok = postgres.ok && mongo.ok && neo4j.ok;
