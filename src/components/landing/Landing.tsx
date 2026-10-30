@@ -84,7 +84,6 @@ export default function Landing() {
     let smooth = window.scrollY;
     let lastFrame = -1;
     let raf = 0;
-    let landLoaded = false;
     let alive = true;
 
     const measure = () => {
@@ -123,15 +122,6 @@ export default function Landing() {
         unlock();
         return seq.load(rest, () => (lastFrame = -1), 4);
       });
-
-    const loadLand = () => {
-      if (landLoaded) return;
-      landLoaded = true;
-      fetch("/flight/land.json")
-        .then((r) => r.json())
-        .then((d: number[]) => globe.setLand(d))
-        .catch(() => {});
-    };
 
     // ---- magnetic CTA ------------------------------------------------------
     const onMove = (e: PointerEvent) => {
@@ -193,7 +183,6 @@ export default function Landing() {
       vCanvas.style.transform = vOut > 0 ? `scale(${1 + ease(vOut) * 0.22})` : "none";
       if (shade.current) shade.current.style.opacity = String(0.55 + 0.45 * ease(vOut));
 
-      if (g > -0.3) loadLand();
       const gc = globeCanvas.current!;
       const globeOpacity = ease(gIn) * (1 - 0.72 * ease(pIn)) * (1 - 0.6 * fIn);
       gc.style.opacity = String(globeOpacity);

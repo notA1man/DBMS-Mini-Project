@@ -2,6 +2,7 @@
 // (orthographic projection, no WebGL / three.js).
 
 import { AIRPORT_BY_CODE, FEATURED_ROUTES } from "@/lib/airports";
+import landMask from "../../../public/flight/land.json";
 
 const RAD = Math.PI / 180;
 
@@ -41,7 +42,8 @@ export class GlobeRenderer {
       const dot = Math.min(1, Math.max(-1, va[0] * vb[0] + va[1] * vb[1] + va[2] * vb[2]));
       const om = Math.acos(dot);
       const so = Math.sin(om) || 1;
-      const height = 0.04 + 0.22 * (om / Math.PI);
+      // A small bulge reads as altitude. Anything taller lifts the far side off the disc.
+      const height = 0.015 + 0.05 * (om / Math.PI);
       const pts: Vec3[] = [];
       const lift: number[] = [];
       for (let i = 0; i <= SEG; i++) {
@@ -60,6 +62,7 @@ export class GlobeRenderer {
       const a = AIRPORT_BY_CODE[c];
       this.airports.push({ v: toVec(a.lat, a.lon), hub: !!a.hub });
     });
+    this.setLand(landMask);
   }
 
   setLand(latLon: number[]) {
@@ -152,7 +155,8 @@ export class GlobeRenderer {
         const k = arc.lift[i];
         const sx = cx + x * r * k;
         const sy = cy - y * r * k;
-        const visible = z > 0 || (x * x + y * y) * k * k > 1;
+        // Front hemisphere only, and only while the lifted point is still inside the disc.
+        const visible = z > 0.02 && x * x * k * k + y * y * k * k <= 1.02;
         if (prev && prev[2] && visible) {
           const t = i / end;
           ctx.strokeStyle = `rgba(${INK},${(0.12 + 0.5 * t * local).toFixed(3)})`;
@@ -168,7 +172,7 @@ export class GlobeRenderer {
       const headIdx = local < 1 ? end : Math.floor(((time * 0.18 + arc.delay) % 1) * (arc.pts.length - 1));
       const [hx, hy, hz] = proj(arc.pts[headIdx]);
       const hk = arc.lift[headIdx];
-      if (hz > 0 || (hx * hx + hy * hy) * hk * hk > 1) {
+      if (hz > 0.02 && hx * hx * hk * hk + hy * hy * hk * hk <= 1.02) {
         const px = cx + hx * r * hk;
         const py = cy - hy * r * hk;
         const g = ctx.createRadialGradient(px, py, 0, px, py, 7);
