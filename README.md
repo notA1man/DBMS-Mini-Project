@@ -18,6 +18,7 @@ Both halves are implemented and integrated:
   See [operations.md](docs/operations.md), the [ER diagram](docs/diagrams/er.svg) and the
   [index benchmark](docs/benchmarks.md).
 
+Project report (all submission sections, screenshots included): [docs/report.md](docs/report.md).
 Test results: [testing.md](docs/testing.md).
 
 ## Stack

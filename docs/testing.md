@@ -162,11 +162,40 @@ That browser run points the server at an unreachable bolt port so re-routing use
 the disposable database is not loaded into the shared Neo4j, and a live demo graph would otherwise
 offer flight ids that do not exist in the test database.
 
-## Not yet run (needs the Docker services)
+# Full run against the Compose services — 2026-10-30 (evening)
 
-- `npm run test:stores` — Mongo validators, exactly-once delivery, newest-snapshot-wins, and the
-  Neo4j test that graph traversal and the recursive CTE return **identical** itineraries plus
-  connection removal on cancellation.
-- `npm test -- src/server/tests/mongo-commercial.test.ts` (Aiman's Mongo suite).
-- Fresh-volume `npm run db:reset` through Compose (the same SQL files were applied in order here).
+Environment: Linux, Node 22.23, Docker PostgreSQL 17.11 + pgvector 0.8, MongoDB 7 (replica set),
+Neo4j 5.26; production build; Chromium (Google Chrome) for the browser runs.
+
+| Check | Command | Result |
+|---|---|---|
+| Typecheck, lint, build | `npm run typecheck`, `npm run lint`, `npm run build` | clean |
+| All Vitest suites, Mongo reachable | `npm test` | **60 passed**, 2 skipped (the Neo4j cases below); `mongo-commercial.test.ts` now runs and passes |
+| MongoDB + Neo4j stores | `npm run test:stores` | **5 / 5**, then the graph was rebuilt with `graph:reconcile` |
+| Ops browser journey | `npm run test:e2e:ops` | **11 / 11** |
+| Commercial browser journey | `npm run test:e2e:commercial` | passes |
+| Fresh-volume init | throwaway `pgvector/pgvector:pg17` container with `db/postgres/init` mounted | all 17 scripts apply; 22 tables, 15 baselined migrations, 32 airports, `skyops_app` can log in |
+| Health | `GET /api/health` | PostgreSQL, MongoDB and Neo4j all ok |
+
+**Visual inspection.** A Playwright crawl signed in as guest, passenger, ops, crew and admin and
+opened every screen at 1440 px and 390 px, recording console errors, failed requests (HTTP ≥ 400)
+and horizontal overflow, and saving full-page screenshots for review. Result: no console errors,
+no failed requests, no page wider than the viewport, and every role is redirected away from areas
+it may not open. Curated screenshots are committed under [screenshots/](screenshots/).
+
+Bugs found and fixed in this pass:
+
+- `/admin/users` rendered all ~4,000 accounts with an edit form each and froze the page. It now
+  shows staff by default, filters by role and email, and renders at most 100 rows.
+- The landing page's network figures (routes, airports, daily flights) were hard-coded and did not
+  match the data; they are now read from PostgreSQL (`opsQueries.networkStats`, refreshed every
+  five minutes).
+- Login/register headline read "The skyis yours." on phones (the line break was hidden without a
+  space).
+- Crew and ops manifests showed the raw `NotCheckedIn` value.
+- The admin overview grid left two empty cells on wide screens.
+
+## Not run
+
 - Cloud deployment.
+- `npm run bench:indexes` was not re-run; [benchmarks.md](benchmarks.md) is from 2026-10-26.

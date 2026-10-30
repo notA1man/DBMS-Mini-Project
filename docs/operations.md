@@ -75,7 +75,7 @@ audit event (`fn_emit_ops_audit`) into the outbox in the same transaction.
 | `fn_disrupted_tickets()` / `sp_rebook_ticket(pnr, seq, flights[])` | Joint disruption flow: lists disrupted tickets with the latest acceptable arrival, then rebooks one onto a direct or connecting itinerary in the **same PNR** — new tickets reference the old one via `replaces_seq`, the first leg carries the original fare, later legs are free; capacity is re-checked |
 | `fn_crew_chain(crew)` | Recursive CTE up the supervisor hierarchy, cycle-safe |
 | `fn_crew_admin`, `fn_route_revenue`, `fn_ops_overview` | Admin-only salary view, revenue report, dashboard counters |
-| `fn_outbox_claim(limit)` | `UPDATE … WHERE event_id IN (SELECT … FOR UPDATE SKIP LOCKED)` so several workers never deliver the same event |
+| `fn_outbox_claim(limit)` | `SELECT … ORDER BY event_id LIMIT n FOR UPDATE SKIP LOCKED` so several workers never deliver the same event |
 | `fn_outbox_complete`, `fn_outbox_fail` | Mark delivered; on failure `attempts + 1` and back-off of 2^(attempts+1) s capped at 1 h |
 | `fn_outbox_admin`, `sp_outbox_retry` | Outbox monitor and manual retry for the admin screen |
 | `fn_seats_remaining(flight, class)` | SECURITY DEFINER seat count so anonymous search sees real availability despite RLS on tickets |

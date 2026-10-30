@@ -1,6 +1,6 @@
 # Project documentation
 
-Final report sections (in submission order):
+The submission report is **[report.md](report.md)**. It covers these sections, in order:
 
 1. Problem statement
 2. Objectives
@@ -13,6 +13,6 @@ Final report sections (in submission order):
 9. SQL / NoSQL / vector implementation
 10. Important queries
 11. System architecture
-12. Application screenshots
+12. Application screenshots — `screenshots/`
 13. Testing results
 14. Conclusion and future enhancements
