@@ -21,16 +21,19 @@ const window4 = (v: number, a: number, b: number, c: number, d: number) =>
   Math.min(range(v, a, b), 1 - range(v, c, d));
 
 const FRAGMENTS = [
-  { idx: "01", tag: "SEARCH", text: "Search 400+ routes.", t: [2.3, 2.9, 4.1, 4.7], side: "left" },
+  { idx: "01", tag: "SEARCH", text: "Search every route.", t: [2.3, 2.9, 4.1, 4.7], side: "left" },
   { idx: "02", tag: "SEATS", text: "Real-time seat maps.", t: [5.0, 5.6, 6.9, 7.5], side: "right" },
   { idx: "03", tag: "BOARD", text: "One tap to board.", t: [8.2, 8.9, 99, 100], side: "left" },
 ] as const;
 
-const STATS = [
-  { value: 412, label: "ROUTES" },
-  { value: 186, label: "AIRPORTS" },
-  { value: 1240, label: "DAILY FLIGHTS" },
-];
+/** Network size read from PostgreSQL by the page; null when the database is unreachable. */
+export type NetworkStats = { routes: number; airports: number; dailyFlights: number } | null;
+
+const STAT_LABELS = [
+  { key: "routes", label: "ROUTES" },
+  { key: "airports", label: "AIRPORTS" },
+  { key: "dailyFlights", label: "DAILY FLIGHTS" },
+] as const;
 
 const RAIL = [
   { at: 0, label: "TO" },
@@ -40,7 +43,7 @@ const RAIL = [
   { at: 1, label: "ARR" },
 ];
 
-export default function Landing() {
+export default function Landing({ network }: { network: NetworkStats }) {
   const [ready, setReady] = useState(false);
   const [pct, setPct] = useState(0);
 
@@ -206,9 +209,9 @@ export default function Landing() {
         stats.current.style.opacity = String(so);
         stats.current.style.transform = `translate3d(0, ${(1 - easeOut(range(g, 0.22, 0.45))) * 30}px, 0)`;
         const count = easeOut(range(g, 0.3, 0.75));
-        STATS.forEach((s, i) => {
-          const el = statNums.current[i];
-          if (el) el.textContent = Math.round(s.value * (reduced ? 1 : count)).toLocaleString("en-IN");
+        statNums.current.forEach((el) => {
+          const value = Number(el?.dataset.value);
+          if (el && Number.isFinite(value)) el.textContent = Math.round(value * (reduced ? 1 : count)).toLocaleString("en-IN");
         });
       }
 
@@ -340,21 +343,22 @@ export default function Landing() {
         ))}
 
         <div ref={stats} className={styles.stats}>
-          <p className={styles.statsKicker}>NETWORK · LIVE GRAPH</p>
+          <p className={styles.statsKicker}>NETWORK · LIVE</p>
           <h2 className={styles.statsTitle}>
             Every route.
             <br />
             One graph.
           </h2>
           <dl className={styles.statsList}>
-            {STATS.map((s, i) => (
+            {STAT_LABELS.map((s, i) => (
               <div key={s.label}>
                 <dd
                   ref={(el) => {
                     statNums.current[i] = el;
                   }}
+                  data-value={network ? network[s.key] : undefined}
                 >
-                  0
+                  {network ? 0 : "—"}
                 </dd>
                 <dt>{s.label}</dt>
               </div>

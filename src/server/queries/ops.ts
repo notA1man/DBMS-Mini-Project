@@ -127,6 +127,12 @@ export const opsQueries = {
     WHERE name_search @@ plainto_tsquery('simple', $1) OR city % $1 OR airport_name % $1 OR airport_code = upper($1)
     ORDER BY (airport_code = upper($1)) DESC, score DESC LIMIT 8`,
 
+  // Landing page network size: distinct routes, served airports, average flights per UTC day.
+  networkStats: `SELECT count(DISTINCT (origin, destination))::int AS routes,
+      (SELECT count(*) FROM airport)::int AS airports,
+      round(count(*)::numeric / greatest(1, count(DISTINCT (departure_time AT TIME ZONE 'UTC')::date)))::int AS "dailyFlights"
+    FROM flight WHERE flight_status <> 'Cancelled'`,
+
   // Analytics (SQL side)
   loadByRoute: `SELECT origin || '-' || destination AS route, count(DISTINCT flight_id)::int AS flights,
       sum(seats_sold)::int AS sold, sum(seats_allocated)::int AS seats,
