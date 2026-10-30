@@ -85,7 +85,7 @@ export function FlightConsole({ id }: { id: string }) {
     </div>
     <section className="card results"><h2>Passenger manifest ({data.manifest.length})</h2>
       <DataTable rows={data.manifest} empty="No passengers." columns={[['bookingId', 'PNR'], ['name', 'Passenger', r => `${r.firstName} ${r.lastName}`],
-        ['fareClass', 'Class'], ['seat', 'Seat'], ['checkin', 'Check-in'], ['status', 'Ticket', r => <Status value={String(r.status)} />], ['bags', 'Bags']]} />
+        ['fareClass', 'Class'], ['seat', 'Seat'], ['checkin', 'Check-in', r => r.checkin === 'CheckedIn' ? 'Checked in' : 'Not checked in'], ['status', 'Ticket', r => <Status value={String(r.status)} />], ['bags', 'Bags']]} />
     </section>
   </>;
 }

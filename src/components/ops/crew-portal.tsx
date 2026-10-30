@@ -47,7 +47,7 @@ export function CrewFlight({ id }: { id: string }) {
       <section className="card"><h2>Passenger manifest ({data?.manifest.length ?? 0})</h2>
         <small className="muted">Visible only because you are rostered on this flight (row-level security).</small>
         <DataTable rows={data?.manifest ?? []} empty="No passengers yet." columns={[['seat', 'Seat'], ['name', 'Passenger', r => `${r.firstName} ${r.lastName}`],
-          ['fareClass', 'Class'], ['checkin', 'Check-in'], ['bags', 'Bags']]} /></section>
+          ['fareClass', 'Class'], ['checkin', 'Check-in', r => r.checkin === 'CheckedIn' ? 'Checked in' : 'Not checked in'], ['bags', 'Bags']]} /></section>
       <section className="card"><h2>Crew</h2>
         <DataTable rows={data?.crew ?? []} columns={[['role', 'Role'], ['name', 'Name']]} />
         <h2 className="results">Report an event</h2>
