@@ -49,7 +49,10 @@ async function main() {
         WHERE f.flight_status <> 'Cancelled'),
       seats AS (
         SELECT b.*, s.seat_number, row_number() OVER (PARTITION BY b.flight_id, b.fare_class ORDER BY s.seat_number) AS rn
-        FROM buckets b JOIN seat s ON s.aircraft_id = b.aircraft_id AND s.seat_class = b.fare_class)
+        FROM buckets b JOIN seat s ON s.aircraft_id = b.aircraft_id AND s.seat_class = b.fare_class
+        -- seats already sold to real bookings (db:seed:demo, the app) stay theirs
+        WHERE NOT EXISTS (SELECT 1 FROM ticket t WHERE t.flight_id = b.flight_id
+                            AND t.seat_number = s.seat_number AND t.ticket_status = 'Active'))
       SELECT s.flight_id, s.aircraft_id, s.departure_time, s.flight_status, s.fare_class, s.seat_number,
         round(s.base_fare * (1 + 0.5 * s.rn / greatest(s.n, 1)) * (CASE WHEN s.rn % 7 = 0 THEN 1.3 WHEN s.rn % 3 = 0 THEN 1.15 ELSE 1 END), 2) AS fare,
         d.passenger_id, d.user_id,

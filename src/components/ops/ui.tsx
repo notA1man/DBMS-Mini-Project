@@ -28,14 +28,14 @@ export function Kpi({ label, value, alert = false }: { label: string; value: Rea
 
 export function Bars({ rows, format = (v: number) => String(v) }: { rows: { label: string; value: number }[]; format?: (v: number) => string }) {
   const max = Math.max(...rows.map(r => r.value), 1);
-  if (!rows.length) return <p className="muted">No data yet.</p>;
+  if (!rows.length) return <p className="empty">No data yet</p>;
   return <div className="bars">{rows.map(r => <div className="bar" key={r.label}><span>{r.label}</span>
     <i><em style={{ width: `${(r.value / max) * 100}%` }} /></i><span>{format(r.value)}</span></div>)}</div>;
 }
 
 /** Notice for a section whose store (MongoDB / Neo4j) could not be reached. */
 export function Unavailable({ error, store }: { error?: string | null; store: string }) {
-  return error ? <p className="muted">{store} unavailable right now ({error}). Start it and run <code>npm run outbox:drain</code>.</p> : null;
+  return error ? <p className="empty">{store} unavailable right now ({error}). Start it and run <code>npm run outbox:drain</code>.</p> : null;
 }
 
 /** Button that POSTs to an ops action and reports the outcome inline. */
@@ -51,10 +51,15 @@ export function ActionButton({ action, body, label, confirm, className, onDone }
     }}>{busy ? 'Working…' : label}</button>{message && <small role="status">{message}</small>}</span>;
 }
 
-export function DataTable({ rows, columns, empty = 'Nothing to show.' }: { rows: Record<string, unknown>[];
-  columns: [string, string, ((row: Record<string, unknown>) => ReactNode)?][]; empty?: string }) {
-  if (!rows.length) return <p className="muted">{empty}</p>;
-  return <div className="overflow"><table><thead><tr>{columns.map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
-    <tbody>{rows.map((row, i) => <tr key={i}>{columns.map(([key, , render]) =>
-      <td key={key}>{render ? render(row) : row[key] === null || row[key] === undefined ? '—' : String(row[key])}</td>)}</tr>)}</tbody></table></div>;
+/** Table with an optional row limit: long lists (manifests, schedules) show the first rows and a toggle. */
+export function DataTable({ rows, columns, empty = 'Nothing to show.', limit = 30 }: { rows: Record<string, unknown>[];
+  columns: [string, string, ((row: Record<string, unknown>) => ReactNode)?][]; empty?: string; limit?: number }) {
+  const [all, setAll] = useState(false);
+  if (!rows.length) return <p className="empty">{empty}</p>;
+  const shown = all ? rows : rows.slice(0, limit);
+  return <><div className="overflow"><table><thead><tr>{columns.map(([key, label]) => <th key={key}>{label}</th>)}</tr></thead>
+    <tbody>{shown.map((row, i) => <tr key={i}>{columns.map(([key, , render]) =>
+      <td key={key}>{render ? render(row) : row[key] === null || row[key] === undefined ? '—' : String(row[key])}</td>)}</tr>)}</tbody></table></div>
+    {rows.length > limit && <div className="table-foot"><span>{shown.length} of {rows.length} rows</span>
+      <button type="button" className="subtle small" onClick={() => setAll(!all)}>{all ? 'Show fewer' : `Show all ${rows.length}`}</button></div>}</>;
 }

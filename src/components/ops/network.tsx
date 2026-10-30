@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { Bars, DataTable, Unavailable, request, useResource } from './ui';
 
 type Opt<T> = { data: T | null; error: string | null };
@@ -10,8 +11,9 @@ export function Network() {
   const [route, setRoute] = useState<Opt<{ stops: string[]; km: number }> | null>(null);
   const [impact, setImpact] = useState<(Opt<{ flights: number; brokenConnections: number; strandedDestinations: string[] }> & { passengers: number }) | null>(null);
   return <>
-    <p className="eyebrow">OPERATIONS · NETWORK (NEO4J)</p><h1>Route network</h1>
-    <p>Airports, flights and connections as a graph: hub ranking, shortest routes, and what an airport closure would break.</p>
+    <PageHead eyebrow="OPERATIONS · NETWORK (NEO4J)" title="Route network"
+      lede="Airports, flights and connections as a graph: hub ranking, shortest routes, and what an airport closure would break."
+      readouts={g?.hubs.data ? [['HUBS', g.hubs.data.hubs.length], ['METHOD', g.hubs.data.method.split(' ')[0]]] : undefined} />
     <p role="alert">{error}</p><Unavailable store="Neo4j" error={g?.hubs.error} />
     <div className="split">
       <section className="card"><h2>Hub ranking</h2><small className="muted">{g?.hubs.data?.method}</small>

@@ -28,7 +28,7 @@ async function main() {
   const mongo=new MongoClient(process.env.MONGODB_URI!);
   const mongoDb=mongo.db(database);
   let created=false,server:ChildProcess|undefined,logs='';
-  const browser=await chromium.launch();
+  const browser=await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM } : {});
   try {
     await admin.query(`CREATE DATABASE "${database}"`);created=true;
     const migrations=(await readdir('db/postgres/init')).filter(f=>f.endsWith('.sql')).sort().map(f=>`init/${f}`);
@@ -71,7 +71,9 @@ async function main() {
     expect(demo.status()).toBe(200);expect((await demo.json()).rows[0].retainedBookings).toBe(0);
     const departure=(await owner.query('SELECT departure_time FROM flight WHERE flight_id=1')).rows[0].departure_time;
     const localDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Asia/Kolkata',year:'numeric',month:'2-digit',day:'2-digit'}).format(departure);
-    await page.getByLabel('Departure',{exact:true}).fill(localDate);await page.getByRole('button',{name:'Find flights →'}).click();
+    await page.goto(`${base}/search`);
+    await page.getByLabel('Origin airport code').fill('BLR');await page.getByLabel('Destination airport code').fill('BOM');
+    await page.getByLabel('DATE',{exact:true}).fill(localDate);await page.getByRole('button',{name:'Find your flight'}).click();
     await expect(page.getByRole('link',{name:'Choose seats'}).first()).toBeVisible();
     await page.goto(`${base}/book?flights=1&fare=Economy`);
     await page.getByRole('button',{name:'1A',exact:true}).click();await page.getByRole('button',{name:'Reserve & continue to payment'}).click();
@@ -113,7 +115,7 @@ async function main() {
     expect((await other.request.get(`${base}/api/commercial/booking?pnr=${pnr}`)).status()).toBe(404);
     expect((await other.request.get(`${base}/api/boarding-pass?pnr=${pnr}&seq=1`)).status()).toBe(404);
     const staff=await browser.newContext(),staffPage=await staff.newPage();await staffPage.goto(`${base}/login`);
-    await staffPage.getByLabel('Email',{exact:true}).fill('admin@skyops.test');await staffPage.getByLabel('Password',{exact:true}).fill('admin-test-password');await staffPage.getByRole('button',{name:'Sign in',exact:true}).click();await expect(staffPage).toHaveURL(`${base}/trips`);
+    await staffPage.getByLabel('Email',{exact:true}).fill('admin@skyops.test');await staffPage.getByLabel('Password',{exact:true}).fill('admin-test-password');await staffPage.getByRole('button',{name:'Sign in',exact:true}).click();await expect(staffPage).toHaveURL(`${base}/ops`);
     const similar=await staff.request.post(`${base}/api/commercial/complaints`,{headers:{Origin:base},data:{query:'The cabin crew were helpful',route:'BLR-BOM',since:'2000-01-01'}});
     const similarData=await similar.json();
     expect(similar.status(),JSON.stringify(similarData)).toBe(200);expect(similarData.complaints).toHaveLength(1);

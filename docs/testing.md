@@ -152,6 +152,16 @@ Two real bugs were found and fixed by this run: zod 4's `z.record(enum, …)` re
 (fares are now `z.partialRecord`), and the crew picker briefly kept the previous role's
 candidates clickable after switching role (now keyed by role).
 
+## Later local run — 2026-10-30
+
+`npm run typecheck`, `npm run lint` and `npm run build` are clean. `npm test` is **60 passed, 2 skipped**
+(the Neo4j store cases still run only under `npm run test:stores`). `npm run test:e2e:ops` is **11 / 11**
+and `npm run test:e2e:commercial` passes the full passenger journey, including a 390px check that the
+landing page does not scroll sideways.
+That browser run points the server at an unreachable bolt port so re-routing uses the recursive CTE:
+the disposable database is not loaded into the shared Neo4j, and a live demo graph would otherwise
+offer flight ids that do not exist in the test database.
+
 ## Not yet run (needs the Docker services)
 
 - `npm run test:stores` — Mongo validators, exactly-once delivery, newest-snapshot-wins, and the

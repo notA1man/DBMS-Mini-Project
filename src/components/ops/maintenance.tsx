@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { Bars, DataTable, Unavailable, ist, ops, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -11,8 +12,9 @@ export function Maintenance() {
   const s = data?.summary.data?.[0];
   const [message, setMessage] = useState('');
   return <>
-    <p className="eyebrow">OPERATIONS · MAINTENANCE (MONGODB)</p><h1>Maintenance work orders</h1>
-    <p>Work orders are semi-structured documents (nested findings by ATA chapter and component actions) stored in MongoDB with a strict <code>$jsonSchema</code> validator.</p>
+    <PageHead eyebrow="OPERATIONS · MAINTENANCE (MONGODB)" title="Maintenance work orders"
+      lede={<>Work orders are semi-structured documents (nested findings by ATA chapter and component actions) stored in MongoDB with a strict <code>$jsonSchema</code> validator.</>}
+      readouts={data?.logs.data ? [['ORDERS', data.logs.data.length], ['OPEN', data.logs.data.filter(r => !r.closedAt).length, data.logs.data.some(r => !r.closedAt) ? 'warn' : undefined]] : undefined} />
     <p role="alert">{error}</p><Unavailable store="MongoDB" error={data?.logs.error} />
     <div className="split">
       <section className="card"><h2>Aircraft-on-ground hours</h2>

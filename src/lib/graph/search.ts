@@ -21,7 +21,7 @@ WHERE all(i IN range(0, size(stops) - 2) WHERE NOT stops[i] IN stops[i + 1..])
 RETURN [x IN legs | x.flightId] AS flightIds,
        duration.inSeconds(legs[0].dep, legs[-1].arr).minutes AS totalMinutes
 ORDER BY size(legs), totalMinutes
-LIMIT $limit`;
+LIMIT toInteger($limit)`;
 
 export async function graphItineraries(driver: Driver, w: Window): Promise<Candidate[]> {
   const { records } = await driver.executeQuery(ITINERARIES, {

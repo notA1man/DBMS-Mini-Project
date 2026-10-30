@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { DataTable, Status, istDate, localTime, ops, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -11,7 +12,8 @@ export function Schedule() {
   const { data, error, reload } = useResource<{ flights: Row[]; fleet: { aircraftId: string; registration: string; typeRating: string }[] }>(`/api/ops/schedule?${query}`);
   const [message, setMessage] = useState(''), [busy, setBusy] = useState(false);
   return <>
-    <p className="eyebrow">OPERATIONS</p><h1>Flight schedule</h1>
+    <PageHead eyebrow="OPERATIONS" title="Flight schedule" lede="Times are local to the airport. An aircraft that is already flying, or inside its 45-minute turnaround, is refused by the database."
+      readouts={data ? [['FLIGHTS', data.flights.length], ['AIRCRAFT', data.fleet.length]] : undefined} />
     <form className="toolbar" onSubmit={e => { e.preventDefault(); const f = Object.fromEntries(new FormData(e.currentTarget)) as typeof filters; setFilters(f); }}>
       <label>From (IST date)<input type="date" name="from" defaultValue={filters.from} /></label>
       <label>Days<select name="days" defaultValue={filters.days}>{[1, 2, 3, 7, 14].map(n => <option key={n}>{n}</option>)}</select></label>

@@ -88,8 +88,8 @@ describe.skipIf(!hasNeo4j)('Neo4j graph', () => {
       [n, ac[a], o, d, day, dep, arr, JSON.stringify({ Economy: 4000, Business: 12000 })]);
     await fl('SK801', 0, 'BLR', 'DEL', '07:00', '09:45');
     await fl('SK802', 1, 'DEL', 'SXR', '11:00', '12:30');
-    await fl('SK803', 2, 'BLR', 'BOM', '06:00', '07:45');
-    await fl('SK804', 3, 'BOM', 'DEL', '09:00', '11:10');   // 75 min layover in BOM
+    await fl('SK803', 2, 'BLR', 'BOM', '05:00', '06:45');
+    await fl('SK804', 3, 'BOM', 'DEL', '08:00', '10:10');   // 75 min layover in BOM, 50 in DEL
     await fl('SK805', 4, 'DEL', 'GAU', '13:00', '15:30');
     await fl('SK806', 5, 'BLR', 'GAU', '08:00', '10:55');
     await fl('SK807', 1, 'SXR', 'DEL', '13:30', '15:00');   // loops back: must never extend BLR-DEL-SXR
@@ -125,7 +125,7 @@ describe.skipIf(!hasNeo4j)('Neo4j graph', () => {
   test('cancelling a flight removes its connections on the next sync', async () => {
     const id = (await owner.query("SELECT flight_id FROM flight WHERE flight_number='SK802'")).rows[0].flight_id;
     await owner.query("UPDATE flight SET flight_status='Cancelled', cancel_reason='test' WHERE flight_id=$1", [id]);
-    const event = (await owner.query("SELECT event_id::text, event_type, payload FROM outbox_event WHERE aggregate_id=$1 ORDER BY event_id DESC LIMIT 1", [String(id)])).rows[0];
+    const event = (await owner.query("SELECT event_id::text, event_type, payload FROM outbox_event WHERE aggregate='flight' AND aggregate_id=$1 AND event_type='FLIGHT_UPSERT' ORDER BY outbox_event.event_id DESC LIMIT 1", [String(id)])).rows[0];
     await applyGraphEvents(driver, [event]);
     const w = await window('BLR');
     expect(await graphItineraries(driver, { from: 'BLR', to: 'SXR', ...w })).toEqual([]);

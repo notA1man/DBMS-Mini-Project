@@ -9,7 +9,17 @@ export const commercialQueries={
       AND f.departure_time < ($3::date+1)::timestamp AT TIME ZONE a.timezone
       AND f.flight_status IN ('Scheduled','Delayed')
     ORDER BY f.departure_time,ff.base_fare`,
-  trips:'SELECT * FROM v_booking_summary WHERE passenger_id=$1 ORDER BY booking_date DESC LIMIT 100',
+  // Each booking with its journey: first origin, final destination, first departure, legs and travellers.
+  trips:`SELECT s.*,j.origin,j.destination,j.departure_time,j.arrival_time,j.flight_number,j.legs,j.travellers
+    FROM v_booking_summary s LEFT JOIN LATERAL (
+      SELECT (array_agg(f.origin ORDER BY f.departure_time))[1] AS origin,
+        (array_agg(f.destination ORDER BY f.departure_time DESC))[1] AS destination,
+        min(f.departure_time) AS departure_time,max(f.arrival_time) AS arrival_time,
+        (array_agg(f.flight_number ORDER BY f.departure_time))[1] AS flight_number,
+        count(DISTINCT t.flight_id)::int AS legs,count(DISTINCT t.passenger_id)::int AS travellers
+      FROM ticket t JOIN flight f USING(flight_id)
+      WHERE t.booking_id=s.booking_id AND (t.ticket_status<>'Cancelled' OR s.booking_status='Cancelled')) j ON true
+    WHERE s.passenger_id=$1 ORDER BY s.booking_date DESC LIMIT 100`,
   tickets:`SELECT t.*,f.flight_number,f.origin,f.destination,f.departure_time,f.arrival_time,
     p.first_name,p.last_name FROM ticket t JOIN flight f USING(flight_id)
     JOIN passenger p ON p.passenger_id=t.passenger_id WHERE t.booking_id=$1 ORDER BY t.ticket_seq`,

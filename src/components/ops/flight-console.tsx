@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { ActionButton, DataTable, Status, Unavailable, ist, localTime, ops, pct, request, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -17,7 +18,7 @@ export function FlightConsole({ id }: { id: string }) {
   const [role, setRole] = useState('Captain');
   const [result, setResult] = useState('');
   const f = data?.flight;
-  if (!f) return <><p className="eyebrow">FLIGHT</p><p role="alert">{error || 'Loading…'}</p></>;
+  if (!f) return <><PageHead eyebrow="FLIGHT" title="Flight" /><p role="alert">{error || 'Loading…'}</p></>;
   const open = ['Scheduled', 'Delayed', 'Boarding'].includes(f.flight_status);
   const summarize = (r: unknown) => {
     const x = r as { knockOn?: { flightNumber: string; addedMinutes: number }[]; releasedCrew?: unknown[]; disruptedTickets?: number; disruptedBookings?: number };
@@ -28,11 +29,12 @@ export function FlightConsole({ id }: { id: string }) {
     setResult(parts.join(' · ') || 'Saved.'); reload();
   };
   return <>
-    <p className="eyebrow">FLIGHT {f.flight_id} · {f.registration} {f.model}</p>
-    <h1>{f.flight_number} {f.origin} → {f.destination} <Status value={f.flight_status} /></h1>
-    <p className="mono">Departs {localTime(f.departure_time, f.origin, true)} local ({ist(f.departure_time)} IST) · arrives {localTime(f.arrival_time, f.destination, true)} local
-      {f.delay_minutes > 0 && <> · <b>+{f.delay_minutes} min</b> ({f.delay_reason}), scheduled {localTime(f.scheduled_departure, f.origin)}</>}
-      {f.gate && <> · Gate {f.gate}</>}</p>
+    <PageHead eyebrow={`FLIGHT ${f.flight_id} · ${f.registration} ${f.model}`}
+      title={<>{f.flight_number} {f.origin} → {f.destination} <Status value={f.flight_status} /></>}
+      lede={<>Departs {localTime(f.departure_time, f.origin, true)} local ({ist(f.departure_time)} IST) · arrives {localTime(f.arrival_time, f.destination, true)} local
+        {f.delay_minutes > 0 && <> · <b>+{f.delay_minutes} min</b> ({f.delay_reason}), scheduled {localTime(f.scheduled_departure, f.origin)}</>}
+        {f.gate && <> · Gate {f.gate}</>}</>}
+      readouts={[['CREW', f.crew_complete ? 'Complete' : 'Gap', f.crew_complete ? 'good' : 'bad'], ['PAX', data.manifest.length], ['DELAY', f.delay_minutes ? `+${f.delay_minutes}m` : 'On time', f.delay_minutes ? 'warn' : undefined]]} />
     {f.cancel_reason && <p role="alert">Cancelled: {f.cancel_reason}</p>}
     {result && <p role="status" className="card">{result}</p>}
 
@@ -97,14 +99,14 @@ function CrewPicker({ flightId, role, setRole, onAssigned }: { flightId: string;
     <p role="alert">{error}</p>{message && <p role="status">{message}</p>}
     {!data && !error && <p className="muted">Checking every {role.toLowerCase()} against the legality rules…</p>}
     {data?.candidates.length === 0 && <p className="muted">Nobody of this rank is positioned at the origin.</p>}
-    {data?.candidates.map(c => <article key={c.crewId} className="card" style={{ padding: '.9rem' }}>
-      <div className="flight-row"><div><strong style={{ fontSize: '1rem' }}>{c.name}</strong> <small>{c.designation} · base {c.base}</small>
+    {data?.candidates.map(c => <article key={c.crewId} className="crew-card">
+      <div><strong>{c.name}</strong> <small>{c.designation} · base {c.base}</small>
         {c.legal ? <ul className="rules"><li>All rules pass</li></ul>
           : <ul className="rules">{c.failures?.map(x => <li key={x.rule} className="fail"><b>{x.rule}</b>{x.detail}</li>)}</ul>}</div>
         <button disabled={!c.legal} onClick={async () => {
           try { await request(`/api/ops/assign`, { crewId: c.crewId, flightId, role }); setMessage(`${c.name} assigned as ${role}.`); onAssigned(); reload(); }
           catch (e) { setMessage((e as Error).message); }
-        }}>Assign</button></div>
+        }}>Assign</button>
     </article>)}
   </div>;
 }

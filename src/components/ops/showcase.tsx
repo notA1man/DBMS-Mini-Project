@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { request } from './ui';
 
 type Result = { sql: string; note: string; rows: Record<string, unknown>[]; plan: unknown };
@@ -7,7 +8,7 @@ type Result = { sql: string; note: string; rows: Record<string, unknown>[]; plan
 export function OpsShowcase() {
   const [result, setResult] = useState<Result | null>(null), [error, setError] = useState(''), [busy, setBusy] = useState(false);
   return <section className="results">
-    <p className="eyebrow">DBMS QUERY SHOWCASE · ADITYA (OPERATIONS)</p><h2>Operations: constraints, recursion and graphs</h2>
+    <PageHead eyebrow="DBMS QUERY SHOWCASE · ADITYA" title="Operations: constraints, recursion and graphs" lede="Named queries against the live database. The double-schedule demonstration rolls back inside a savepoint." />
     <form className="card stack" onSubmit={async e => {
       e.preventDefault(); setBusy(true); setError('');
       try { setResult(await request('/api/showcase/ops', Object.fromEntries(new FormData(e.currentTarget)))); }

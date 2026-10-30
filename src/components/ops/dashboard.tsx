@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { PageHead } from '@/components/page-head';
 import { DataTable, Kpi, Status, localTime, pct, useResource } from './ui';
 
 type Overview = { next24h: Record<string, number> | null; onTimeRate7d: number | null; unresolvedDisruptions: number;
@@ -11,7 +12,9 @@ export function OpsDashboard() {
   const o = data?.overview;
   const active = o?.next24h ? Object.entries(o.next24h).filter(([s]) => s !== 'Cancelled').reduce((n, [, v]) => n + v, 0) : 0;
   return <>
-    <p className="eyebrow">OPERATIONS CONTROL</p><h1>Ops console</h1><p role="alert">{error}</p>
+    <PageHead eyebrow="OPERATIONS CONTROL" title="Ops console" lede="The next twelve hours, crew gaps, and anything that still has to reach MongoDB or Neo4j."
+      readouts={o ? [['NEXT 24 H', active], ['ON TIME', pct(o.onTimeRate7d)], ['TO RE-BOOK', o.unresolvedDisruptions, o.unresolvedDisruptions ? 'warn' : undefined]] : undefined} />
+    <p role="alert">{error}</p>
     {o && <div className="kpis">
       <Kpi label="FLIGHTS NEXT 24 H" value={active} />
       <Kpi label="ON-TIME (7 DAYS)" value={pct(o.onTimeRate7d)} />

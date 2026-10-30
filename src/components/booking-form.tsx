@@ -1,6 +1,7 @@
 'use client';
 import { useEffect,useState } from 'react';
 import { request,money } from './api';
+import { PageHead } from './page-head';
 type Seat={seat_number:string;seat_class:string;available:boolean;price:string};
 export function BookingForm({flights,fare}:{flights:string[];fare:string}) {
   const [maps,setMaps]=useState<Record<string,Seat[]>>({});
@@ -11,7 +12,9 @@ export function BookingForm({flights,fare}:{flights:string[];fare:string}) {
       .then(entries=>{if(live)setMaps(Object.fromEntries(entries));}).catch(e=>{if(live)setError(e.message);});
     return ()=>{live=false;};
   },[flights]);
-  return <><p className="eyebrow">RESERVE YOUR JOURNEY</p><h1>A seat for everyone.</h1><p>Fares are finalized when you reserve. Your booking stays pending until it is fully paid.</p>
+  const loaded = Object.keys(maps).length;
+  return <><PageHead eyebrow="RESERVE YOUR JOURNEY" title="A seat for everyone." lede="Fares are finalized when you reserve. Your booking stays pending until it is fully paid."
+    readouts={[['LEGS', flights.length], ['CABIN', fare], ['SEAT MAPS', loaded === flights.length ? 'Ready' : `${loaded}/${flights.length}`]]} />
     <form className="stack" onSubmit={async event=>{
       event.preventDefault();setBusy(true);setError('');const f=new FormData(event.currentTarget);
       try {

@@ -56,8 +56,11 @@ async function main() {
     pass(`disposable database seeded (${(await owner.query('SELECT count(*) FROM flight')).rows[0].count} flights)${hasMongo ? ' + MongoDB collections' : ' (MongoDB not reachable: fallback paths exercised)'}`);
 
     const port = await freePort(), base = `http://localhost:${port}`;
+    // The disposable database is not loaded into the shared Neo4j, so point the server at an
+    // unreachable bolt port and exercise the recursive-CTE fallback (same itineraries, test DB only).
     server = spawn(process.execPath, ['node_modules/next/dist/bin/next', 'start', '-p', String(port)], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'],
-      env: { ...process.env, DATABASE_URL: appUrl.toString(), MONGODB_DB: database, AUTH_SECRET: randomBytes(32).toString('hex'), AUTH_TRUST_HOST: 'true', EMBEDDINGS_ENABLED: 'false' } });
+      env: { ...process.env, DATABASE_URL: appUrl.toString(), MONGODB_DB: database, NEO4J_URI: 'bolt://127.0.0.1:1',
+        AUTH_SECRET: randomBytes(32).toString('hex'), AUTH_TRUST_HOST: 'true', EMBEDDINGS_ENABLED: 'false' } });
     server.stdout?.on('data', d => { logs = (logs + d).slice(-10000); }); server.stderr?.on('data', d => { logs = (logs + d).slice(-10000); });
     for (let i = 0; ; i++) {
       try { if ((await fetch(base)).ok) break; } catch { /* starting */ }
@@ -153,7 +156,7 @@ async function main() {
 
     // ---- public board + connecting search (graph or SQL fallback)
     await page.goto(`${base}/board`);
-    await expect(page.locator('.board tbody tr').first()).toBeVisible();
+    await expect(page.locator('.fids tbody tr').first()).toBeVisible();
     const r = await (await fetch(`${base}/api/search/itineraries?from=BLR&to=GAU&date=${new Date(Date.now() + 86400e3 + 5.5 * 3600e3).toISOString().slice(0, 10)}`)).json();
     expect(Array.isArray(r.itineraries)).toBe(true);
     pass(`public departures board renders; itinerary API answers via ${r.source} (${r.itineraries.length} options)`);

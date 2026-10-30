@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { ActionButton, Bars, DataTable, Unavailable, ist, money, ops, pct, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -15,8 +16,10 @@ export function AdminHome() {
     ['/admin/audit', 'Audit log', 'Every privileged change, projected from the outbox into MongoDB.'],
     ['/admin/outbox', 'Outbox monitor', 'Delivery of PostgreSQL changes to MongoDB and Neo4j.'],
   ];
-  return <><p className="eyebrow">ADMINISTRATION</p><h1>Admin</h1>
-    <div className="feature-grid">{links.map(([href, title, text]) => <article key={href}><h2><Link href={href}>{title}</Link></h2><p>{text}</p></article>)}</div></>;
+  return <><PageHead eyebrow="ADMINISTRATION" title="Admin" lede="Revenue, fleet, airports, accounts, and the trail of every change that left PostgreSQL." />
+    <div className="tiles">{links.map(([href, title, text], i) => <Link className="tile" href={href} key={href}>
+      <header><span>{String(i + 1).padStart(2, '0')}</span><span>↗</span></header>
+      <div><h2>{title}</h2><p>{text}</p></div></Link>)}</div></>;
 }
 
 // ---------------------------------------------------------------- fleet
@@ -34,7 +37,9 @@ export function Fleet() {
   const [layoutText, setLayoutText] = useState(JSON.stringify(PRESETS[Object.keys(PRESETS)[0]], null, 1));
   const [message, setMessage] = useState('');
   return <>
-    <p className="eyebrow">ADMINISTRATION</p><h1>Fleet & seat maps</h1><p role="alert">{error}</p>
+    <PageHead eyebrow="ADMINISTRATION" title="Fleet & seat maps" lede="Aircraft, the seat maps generated from their cabin layouts, and the generator that builds a new one."
+      readouts={data ? [['AIRCRAFT', data.fleet.length], ['IN SERVICE', data.fleet.filter(a => a.status === 'Active').length]] : undefined} />
+    <p role="alert">{error}</p>
     <section className="card"><DataTable rows={data?.fleet ?? []} columns={[
       ['registration', 'Registration', r => <button className="subtle" onClick={() => setSelected(String(r.aircraftId))}>{String(r.registration)}</button>],
       ['model', 'Model'], ['typeRating', 'Type'], ['capacity', 'Seats'],
@@ -88,7 +93,9 @@ export function Airports() {
   const { data, error, reload } = useResource<{ airports: Row[] }>('/api/ops/airports');
   const [message, setMessage] = useState('');
   return <>
-    <p className="eyebrow">ADMINISTRATION</p><h1>Airports</h1><p role="alert">{error}</p>
+    <PageHead eyebrow="ADMINISTRATION" title="Airports" lede="IATA airports with time zones checked against PostgreSQL’s IANA catalogue. A save syncs the airport into Neo4j through the outbox."
+      readouts={data ? [['AIRPORTS', data.airports.length]] : undefined} />
+    <p role="alert">{error}</p>
     <section className="card"><DataTable rows={data?.airports ?? []} columns={[['code', 'IATA'], ['name', 'Name'], ['city', 'City'], ['country', 'Country'],
       ['timezone', 'Time zone'], ['upcomingDepartures', 'Upcoming departures']]} /></section>
     <section className="card results"><h2>Add or update an airport</h2>
@@ -123,7 +130,8 @@ export function Analytics() {
   for (const r of data.sql?.revenue ?? []) revenueByRoute.set(`${r.origin}-${r.destination}`, (revenueByRoute.get(`${r.origin}-${r.destination}`) ?? 0) + Number(r.revenue));
   const buckets = ['0–15', '15–30', '30–60', '60–120', '120–240', '240+'];
   return <>
-    <p className="eyebrow">ADMINISTRATION · ANALYTICS</p><h1>Network analytics</h1><p role="alert">{error}</p>
+    <PageHead eyebrow="ADMINISTRATION · ANALYTICS" title="Network analytics" lede="Revenue, load, on-time performance and hubs, each from the store that owns it: PostgreSQL, MongoDB or Neo4j." />
+    <p role="alert">{error}</p>
     <div className="toolbar"><ActionButton action="refresh-analytics" label="Refresh revenue view" className="subtle" body={() => ({})} onDone={() => reload()} /></div>
     <div className="split">
       <section className="card"><p className="eyebrow">POSTGRESQL · MATERIALIZED VIEW</p><h2>Revenue by route (3 months)</h2>
@@ -156,8 +164,9 @@ export function Audit() {
   const days = new Map<string, number>();
   for (const r of data?.byDay.data ?? []) { const d = ist(String(r.day)).split(',')[0]; days.set(d, (days.get(d) ?? 0) + Number(r.actions)); }
   return <>
-    <p className="eyebrow">ADMINISTRATION · AUDIT (MONGODB)</p><h1>Audit log</h1>
-    <p>Privileged changes are written to the PostgreSQL outbox in the same transaction as the change, then projected into MongoDB (365-day TTL). Credentials never enter the payload.</p>
+    <PageHead eyebrow="ADMINISTRATION · AUDIT (MONGODB)" title="Audit log"
+      lede="Privileged changes are written to the PostgreSQL outbox in the same transaction as the change, then projected into MongoDB (365-day TTL). Credentials never enter the payload."
+      readouts={data?.entries.data ? [['ENTRIES', data.entries.data.length]] : undefined} />
     <p role="alert">{error}</p><Unavailable store="MongoDB" error={data?.entries.error} />
     <section className="card"><h2>Actions per day</h2><Bars rows={[...days.entries()].map(([label, value]) => ({ label, value }))} /></section>
     <section className="card results"><div className="toolbar"><label>Role<select value={role} onChange={e => setRole(e.target.value)}><option value="">All</option>
@@ -171,8 +180,9 @@ export function Outbox() {
   const { data, error, reload } = useResource<{ events: Row[]; overview: Row }>('/api/ops/outbox');
   const [result, setResult] = useState('');
   return <>
-    <p className="eyebrow">ADMINISTRATION · TRANSACTIONAL OUTBOX</p><h1>Outbox monitor</h1>
-    <p>Every change that must reach MongoDB or Neo4j is written to <code>outbox_event</code> inside the same PostgreSQL transaction. The dispatcher claims events with <code>FOR UPDATE SKIP LOCKED</code>, delivers them idempotently and retries failures with exponential backoff.</p>
+    <PageHead eyebrow="ADMINISTRATION · TRANSACTIONAL OUTBOX" title="Outbox monitor"
+      lede={<>Every change that must reach MongoDB or Neo4j is written to <code>outbox_event</code> inside the same PostgreSQL transaction. The dispatcher claims events with <code>FOR UPDATE SKIP LOCKED</code>, delivers them idempotently and retries failures with exponential backoff.</>}
+      readouts={data ? [['PENDING', String(data.overview?.outboxPending ?? '—'), Number(data.overview?.outboxPending) ? 'warn' : undefined], ['RETRYING', String(data.overview?.outboxFailing ?? '—'), Number(data.overview?.outboxFailing) ? 'bad' : undefined]] : undefined} />
     <p role="alert">{error}</p>
     <div className="kpis"><div className="kpi"><span>PENDING</span><strong>{String(data?.overview?.outboxPending ?? '—')}</strong></div>
       <div className={`kpi ${Number(data?.overview?.outboxFailing) ? 'alert' : ''}`}><span>RETRYING</span><strong>{String(data?.overview?.outboxFailing ?? '—')}</strong></div></div>

@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { DataTable, ist, localTime, money, ops, request, useResource } from './ui';
 
 type Ticket = { booking_id: string; ticket_seq: number; first_name: string; last_name: string; fare_class: string;
@@ -13,8 +14,9 @@ type Row = Record<string, unknown>;
 export function Disruptions() {
   const { data, error, reload } = useResource<{ tickets: Ticket[]; cancelled: Row[] }>('/api/ops/disruptions');
   return <>
-    <p className="eyebrow">OPERATIONS · DISRUPTION WORKBENCH</p><h1>Re-book disrupted passengers</h1>
-    <p>When a flight is cancelled its tickets become <b>Disrupted</b>. Alternatives come from the Neo4j connection graph (falling back to a recursive SQL query) and are re-checked against live PostgreSQL availability. Re-booking keeps the passenger&apos;s PNR and costs them nothing.</p>
+    <PageHead eyebrow="OPERATIONS · DISRUPTION WORKBENCH" title="Re-book disrupted passengers"
+      lede={<>When a flight is cancelled its tickets become <b>Disrupted</b>. Alternatives come from the Neo4j connection graph (falling back to a recursive SQL query) and are re-checked against live PostgreSQL availability. Re-booking keeps the passenger&apos;s PNR and costs them nothing.</>}
+      readouts={data ? [['WAITING', data.tickets.length, data.tickets.length ? 'warn' : undefined], ['CANCELLED', data.cancelled.length]] : undefined} />
     <p role="alert">{error}</p>
     <section className="card"><h2>Recently cancelled flights</h2>
       <DataTable rows={data?.cancelled ?? []} empty="No cancellations in the last two days." columns={[

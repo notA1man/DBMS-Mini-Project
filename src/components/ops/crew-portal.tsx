@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { useState } from 'react';
+import { PageHead } from '@/components/page-head';
 import { DataTable, Status, ist, localTime, ops, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -9,8 +10,10 @@ export function CrewPortal() {
   const { data, error } = useResource<{ profile: Row & { certifications: { certification: string; validUntil: string }[] }; roster: Row[]; chain: Row[] }>('/api/ops/crew-me');
   const p = data?.profile;
   return <>
-    <p className="eyebrow">CREW PORTAL</p><h1>{p ? `${p.name}` : 'My roster'}</h1><p role="alert">{error}</p>
-    {p && <p>{String(p.designation)} · base {String(p.base)} · licence <span className="mono">{String(p.license)}</span></p>}
+    <PageHead eyebrow="CREW PORTAL" title={p ? String(p.name) : 'My roster'}
+      lede={p ? <>{String(p.designation)} · base {String(p.base)} · licence <span className="mono">{String(p.license)}</span></> : 'Duties, certificates and the reporting line above you.'}
+      readouts={data ? [['DUTIES', data.roster.length], ['CERTIFICATES', p?.certifications?.length ?? 0]] : undefined} />
+    <p role="alert">{error}</p>
     <div className="split">
       <section className="card"><h2>My duties</h2>
         <DataTable rows={data?.roster ?? []} empty="No upcoming duties." columns={[
@@ -36,10 +39,10 @@ export function CrewFlight({ id }: { id: string }) {
   const [message, setMessage] = useState('');
   const f = data?.flight;
   return <>
-    <p className="eyebrow">CREW PORTAL · FLIGHT</p>
-    <h1>{f ? <>{String(f.flightNumber)} {String(f.origin)} → {String(f.destination)} <Status value={String(f.status)} /></> : 'Flight'}</h1>
+    <PageHead eyebrow="CREW PORTAL · FLIGHT" title={f ? <>{String(f.flightNumber)} {String(f.origin)} → {String(f.destination)} <Status value={String(f.status)} /></> : 'Flight'}
+      lede={f ? <>Departs {localTime(String(f.departureTime), String(f.origin), true)} local{f.gate ? ` · Gate ${f.gate}` : ''}{Number(f.delayMinutes) ? ` · +${f.delayMinutes} min` : ''}</> : undefined}
+      readouts={data ? [['PASSENGERS', data.manifest.length], ['CREW', data.crew.length]] : undefined} />
     <p role="alert">{error}</p>
-    {f && <p className="mono">Departs {localTime(String(f.departureTime), String(f.origin), true)} local{f.gate ? ` · Gate ${f.gate}` : ''}{Number(f.delayMinutes) ? ` · +${f.delayMinutes} min` : ''}</p>}
     <div className="split">
       <section className="card"><h2>Passenger manifest ({data?.manifest.length ?? 0})</h2>
         <small className="muted">Visible only because you are rostered on this flight (row-level security).</small>

@@ -30,6 +30,10 @@ export function flightEventsFrom(event: OutboxEvent): Document[] {
     const [from, to] = changes.delayMinutes as number[];
     if (to > from) docs.push(doc('DELAY', { fromMinutes: from, toMinutes: to, addedMinutes: to - from, reason: f.delayReason ?? 'Other' }));
     else docs.push(doc('RETIME', { fromMinutes: from, toMinutes: to }));
+  } else if ((changes.status as string[] | undefined)?.[1] === 'Delayed' && Number(f.delayMinutes) > 0) {
+    // Moved to Delayed with a delay recorded earlier (e.g. imported history inserted already delayed).
+    const minutes = Number(f.delayMinutes);
+    docs.push(doc('DELAY', { fromMinutes: 0, toMinutes: minutes, addedMinutes: minutes, reason: f.delayReason ?? 'Other' }));
   }
   if (changes.gate) docs.push(doc('GATE_CHANGE', { from: changes.gate[0], to: changes.gate[1] }));
   if (changes.status) {

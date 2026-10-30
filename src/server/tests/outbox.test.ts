@@ -72,6 +72,12 @@ describe('flight event projection', () => {
     const retime = flightEventsFrom({ ...base, payload: { ...base.payload, changes: { delayMinutes: [40, 10] } } });
     expect(retime[0]).toMatchObject({ meta: { type: 'RETIME' }, payload: { fromMinutes: 40, toMinutes: 10 } });
   });
+
+  test('moving to Delayed with a delay recorded at creation still yields one DELAY', () => {
+    const late = flightEventsFrom({ ...base, payload: { ...base.payload, changes: { status: ['Scheduled', 'Delayed'] } } });
+    expect(late.map(d => d.meta.type)).toEqual(['DELAY', 'STATUS']);
+    expect(late[0]).toMatchObject({ payload: { fromMinutes: 0, addedMinutes: 40, reason: 'Weather' } });
+  });
 });
 
 describe('dispatcher', () => {

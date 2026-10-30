@@ -27,7 +27,7 @@ export function LoginForm({register=false}:{register?:boolean}) {
       <label>Email<input type="email" name="email" autoComplete="email" required maxLength={254}/></label>
       <label>Password<input type="password" name="password" autoComplete={register?'new-password':'current-password'} required minLength={12} maxLength={72} aria-describedby="password-help"/></label>
       <small id="password-help">12–72 bytes. Avoid using a password from another service.</small>
-      <button disabled={busy}>{busy?'Please wait…':register?'Create account':'Sign in'}</button><p role="alert">{error}</p>
+      <button disabled={busy}>{busy?'Please wait…':register?'Create account':'Sign in'} <span aria-hidden="true">↗</span></button><p role="alert">{error}</p>
     </form><p>{register?'Already registered?':'New to SkyOps?'} <Link href={register?'/login':'/register'}>{register?'Sign in':'Create an account'}</Link></p>
   </section></div>;
 }

@@ -1,5 +1,6 @@
 'use client';
 import Link from 'next/link';
+import { PageHead } from '@/components/page-head';
 import { DataTable, ist, localTime, useResource } from './ui';
 
 type Row = Record<string, unknown>;
@@ -9,7 +10,9 @@ export function CrewOps() {
   const bases = [...new Set((data?.strength ?? []).map(r => String(r.base)))];
   const count = (base: string, d: string) => data?.strength.find(r => r.base === base && r.designation === d)?.n ?? 0;
   return <>
-    <p className="eyebrow">OPERATIONS · CREW</p><h1>Crew coverage & certificates</h1><p role="alert">{error}</p>
+    <PageHead eyebrow="OPERATIONS · CREW" title="Crew coverage & certificates" lede="Flights that cannot board yet, certificates about to expire, and how many of each rank sit at each base."
+      readouts={data ? [['GAPS', data.coverage.length, data.coverage.length ? 'warn' : undefined], ['EXPIRING', data.expiring.length, data.expiring.length ? 'warn' : undefined]] : undefined} />
+    <p role="alert">{error}</p>
     <section className="card"><h2>Flights missing crew (next 72 h)</h2>
       <p className="muted">From the <code>v_crew_coverage</code> view (GROUP BY … HAVING). Open a flight to see legal candidates.</p>
       <DataTable rows={data?.coverage ?? []} empty="All flights in the next 72 hours are fully crewed." columns={[
