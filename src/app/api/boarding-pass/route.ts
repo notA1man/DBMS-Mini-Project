@@ -9,7 +9,7 @@ export async function GET(request:Request) {
       if(!rows[0]) throw new HttpError(404,'Boarding pass unavailable.');
       return rows[0].boarding_pass_code;
     });
-    const png=await QRCode.toBuffer(`SKYOPS:${code}`,{width:300,margin:2});
+    const png=await QRCode.toBuffer(`STRATA:${code}`,{width:300,margin:2});
     return new Response(new Uint8Array(png),{headers:{'Content-Type':'image/png','Cache-Control':'private, no-store'}});
   } catch(error) {return apiError(error);}
 }

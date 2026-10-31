@@ -5,7 +5,7 @@ import { randomUUID } from 'node:crypto';
 import { commercialQueries } from '../queries/commercial';
 
 process.loadEnvFile('.env');
-const database = `skyops_commercial_test_${randomUUID().replaceAll('-', '')}`;
+const database = `strata_commercial_test_${randomUUID().replaceAll('-', '')}`;
 const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
 const url = new URL(process.env.DATABASE_URL_OWNER!);
 url.pathname = `/${database}`;
@@ -18,7 +18,7 @@ async function asUser<T>(id: number, fn: (c: PoolClient) => Promise<T>) {
   const c = await owner.connect();
   try {
     await c.query('BEGIN');
-    await c.query('SET LOCAL ROLE skyops_app');
+    await c.query('SET LOCAL ROLE strata_app');
     // Deliberately lie about role: authorization must use the account row.
     await c.query("SELECT set_config('app.user_id',$1,true),set_config('app.role','ADMIN',true)", [String(id)]);
     const result = await fn(c);

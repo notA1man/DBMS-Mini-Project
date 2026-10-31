@@ -31,7 +31,7 @@ async function freePort() {
 }
 
 async function main() {
-  const database = `skyops_ops_e2e_${randomUUID().replaceAll('-', '').slice(0, 16)}`;
+  const database = `strata_ops_e2e_${randomUUID().replaceAll('-', '').slice(0, 16)}`;
   const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
   const ownerUrl = new URL(process.env.DATABASE_URL_OWNER!); ownerUrl.pathname = `/${database}`;
   const appUrl = new URL(process.env.DATABASE_URL!); appUrl.pathname = `/${database}`;
@@ -43,7 +43,7 @@ async function main() {
   const browser = await chromium.launch(process.env.PLAYWRIGHT_CHROMIUM ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM } : {});
   try {
     await admin.query(`CREATE DATABASE "${database}"`); created = true;
-    await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO skyops_app`);
+    await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO strata_app`);
     for (const file of (await readdir('db/postgres/init')).filter(f => f.endsWith('.sql')).sort()) {
       const sql = await readFile(`db/postgres/init/${file}`, 'utf8');
       if (sql.replace(/--[^\n]*/g, '').trim()) await owner.query(sql);
@@ -51,7 +51,7 @@ async function main() {
     const env = { ...process.env, DATABASE_URL_OWNER: ownerUrl.toString(), SEED_DAYS_BACK: '3', SEED_DAYS_AHEAD: '4', SEED_STAFF_PASSWORD: PASSWORD, DEMO_LOAD: '0.15', MONGODB_DB: database };
     await runScript('scripts/seed-ops.ts', env);
     await runScript('scripts/seed-demo-traffic.ts', env);
-    await owner.query(`INSERT INTO app_user(email, password_hash, role) VALUES ('admin@skyops.test', crypt($1, gen_salt('bf', 4)), 'ADMIN')`, [PASSWORD]);
+    await owner.query(`INSERT INTO app_user(email, password_hash, role) VALUES ('admin@strata.test', crypt($1, gen_salt('bf', 4)), 'ADMIN')`, [PASSWORD]);
     if (hasMongo) { const db = mongo.db(database); await initCommercialMongo(db); await initOpsMongo(db); }
     pass(`disposable database seeded (${(await owner.query('SELECT count(*) FROM flight')).rows[0].count} flights)${hasMongo ? ' + MongoDB collections' : ' (MongoDB not reachable: fallback paths exercised)'}`);
 
@@ -80,7 +80,7 @@ async function main() {
     };
 
     // ---- ops: dashboard
-    await login(page, 'ops@skyops.test');
+    await login(page, 'ops@strata.test');
     expect(new URL(page.url()).pathname).toBe('/ops');
     await expect(page.locator('.kpi').first()).toBeVisible();
     pass('ops staff land on the ops console with live KPIs');
@@ -162,7 +162,7 @@ async function main() {
     pass(`public departures board renders; itinerary API answers via ${r.source} (${r.itineraries.length} options)`);
 
     // ---- crew portal and role separation
-    await login(page, 'captain@skyops.test');
+    await login(page, 'captain@strata.test');
     expect(new URL(page.url()).pathname).toBe('/crew');
     await page.locator('table a').first().click();
     await expect(page.getByText('row-level security')).toBeVisible();
@@ -172,7 +172,7 @@ async function main() {
     expect(denied).toBe(403);
     pass('crew see their roster and assigned manifests only; ops pages and APIs are denied (middleware + API)');
 
-    await login(page, 'admin@skyops.test');
+    await login(page, 'admin@strata.test');
     for (const path of ['/admin/analytics', '/admin/fleet', '/admin/outbox']) {
       await page.goto(base + path); await expect(page.locator('h1')).toBeVisible();
     }

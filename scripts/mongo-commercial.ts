@@ -5,7 +5,7 @@ async function main() {
   const client=new MongoClient(process.env.MONGODB_URI!);
   try {
     await client.connect();
-    await initCommercialMongo(client.db(process.env.MONGODB_DB || 'skyops'));
+    await initCommercialMongo(client.db(process.env.MONGODB_DB || 'strata'));
     console.log('Commercial Mongo validators and indexes are ready.');
   } finally { await client.close(); }
 }

@@ -186,7 +186,7 @@ async function main() {
   const now = Date.now();
   try {
     await c.query('BEGIN');
-    await c.query("SELECT pg_advisory_xact_lock(hashtext('skyops-seed-ops'))");
+    await c.query("SELECT pg_advisory_xact_lock(hashtext('strata-seed-ops'))");
     AIRPORT_TZ = Object.fromEntries((await c.query('SELECT airport_code, timezone FROM airport')).rows
       .map(r => [r.airport_code, r.timezone]));
     if (Object.keys(AIRPORT_TZ).length === 0) throw new Error('Run migrations first: airports are missing (95_seed_reference.sql).');
@@ -373,10 +373,10 @@ async function main() {
         if (id) await c.query(`INSERT INTO app_user(email, password_hash, role, crew_id)
           VALUES ($1, crypt($2, gen_salt('bf', 12)), 'CREW', $3) ON CONFLICT (email) DO NOTHING`, [email, staffPassword, id]);
       };
-      await c.query(`INSERT INTO app_user(email, password_hash, role) VALUES ('ops@skyops.test', crypt($1, gen_salt('bf', 12)), 'OPS')
+      await c.query(`INSERT INTO app_user(email, password_hash, role) VALUES ('ops@strata.test', crypt($1, gen_salt('bf', 12)), 'OPS')
         ON CONFLICT (email) DO NOTHING`, [staffPassword]);
-      await crewUser('captain@skyops.test', 'Captain');
-      await crewUser('purser@skyops.test', 'Purser');
+      await crewUser('captain@strata.test', 'Captain');
+      await crewUser('purser@strata.test', 'Purser');
     }
 
     await c.query('COMMIT');

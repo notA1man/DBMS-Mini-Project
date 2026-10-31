@@ -13,7 +13,7 @@ async function main() {
       try {
         await c.query('BEGIN');
         // Serializes concurrent seed runs and avoids a duplicate-title race.
-        await c.query("SELECT pg_advisory_xact_lock(hashtext('skyops-policy-seed'))");
+        await c.query("SELECT pg_advisory_xact_lock(hashtext('strata-policy-seed'))");
         let doc=(await c.query('SELECT doc_id FROM kb_document WHERE title=$1',[title])).rows[0];
         if(doc) await c.query('UPDATE kb_document SET category=$2,body=$3 WHERE doc_id=$1',[doc.doc_id,category,body]);
         else doc=(await c.query('INSERT INTO kb_document(title,category,body) VALUES($1,$2,$3) RETURNING doc_id',[title,category,body])).rows[0];

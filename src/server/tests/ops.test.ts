@@ -1,13 +1,13 @@
 // Operations integrity tests (Aditya). Every production migration is applied, in order, to a
 // disposable database - no fixtures - and behaviour is exercised through the least-privilege
-// application role exactly as the web server does (SET LOCAL ROLE skyops_app + app.user_id).
+// application role exactly as the web server does (SET LOCAL ROLE strata_app + app.user_id).
 import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { Pool, type PoolClient } from 'pg';
 import { readFile, readdir } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
 
 process.loadEnvFile('.env');
-const database = `skyops_ops_test_${randomUUID().replaceAll('-', '')}`;
+const database = `strata_ops_test_${randomUUID().replaceAll('-', '')}`;
 const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
 const url = new URL(process.env.DATABASE_URL_OWNER!);
 url.pathname = `/${database}`;
@@ -23,7 +23,7 @@ async function as<T>(userId: string, fn: (c: PoolClient) => Promise<T>) {
   const c = await owner.connect();
   try {
     await c.query('BEGIN');
-    await c.query('SET LOCAL ROLE skyops_app');
+    await c.query('SET LOCAL ROLE strata_app');
     // Deliberately claim ADMIN: authorization must come from the app_user row, not this string.
     await c.query("SELECT set_config('app.user_id',$1,true), set_config('app.role','ADMIN',true)", [userId]);
     const result = await fn(c);
@@ -46,7 +46,7 @@ async function schedule(number: string, aircraft: string, origin: string, destin
 beforeAll(async () => {
   await admin.query(`CREATE DATABASE "${database}"`);
   created = true;
-  await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO skyops_app`);
+  await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO strata_app`);
   // Same order Docker and `npm run db:migrate` use; placeholders and shell scripts skipped.
   for (const file of (await readdir('db/postgres/init')).filter(f => f.endsWith('.sql')).sort()) {
     const sql = await readFile(`db/postgres/init/${file}`, 'utf8');
@@ -286,7 +286,7 @@ describe('outbox', () => {
   test('two dispatchers never claim the same event (FOR UPDATE SKIP LOCKED)', async () => {
     const a = await owner.connect(), b = await owner.connect();
     try {
-      for (const c of [a, b]) { await c.query('BEGIN'); await c.query('SET LOCAL ROLE skyops_app'); }
+      for (const c of [a, b]) { await c.query('BEGIN'); await c.query('SET LOCAL ROLE strata_app'); }
       const first = (await a.query('SELECT event_id FROM fn_outbox_claim(25)')).rows.map(r => r.event_id);
       const second = (await b.query('SELECT event_id FROM fn_outbox_claim(25)')).rows.map(r => r.event_id);
       expect(first.length).toBe(25);

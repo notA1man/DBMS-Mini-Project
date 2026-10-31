@@ -12,8 +12,8 @@ async function main(){
     for(let n=1;n<=3;n++){
       const c=await pool.connect();
       try {
-        await c.query('BEGIN');await c.query("SELECT pg_advisory_xact_lock(hashtext('skyops-commercial-demo'))");
-        const email=`passenger${n}@skyops.test`;
+        await c.query('BEGIN');await c.query("SELECT pg_advisory_xact_lock(hashtext('strata-commercial-demo'))");
+        const email=`passenger${n}@strata.test`;
         let user=(await c.query('SELECT user_id,passenger_id,role FROM app_user WHERE email=$1',[email])).rows[0];
         if(!user){
           const uid=(await c.query("SELECT fn_register($1,$2,'Demo',$3,'2000-01-01') AS id",[email,password,`Passenger ${n}`])).rows[0].id;

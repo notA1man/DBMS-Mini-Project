@@ -55,7 +55,7 @@ async function measure(c: PoolClient, sql: string, params: unknown[]) {
 }
 
 async function main() {
-  const database = `skyops_bench_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
+  const database = `strata_bench_${randomUUID().replaceAll('-', '').slice(0, 12)}`;
   const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
   const url = new URL(process.env.DATABASE_URL_OWNER!); url.pathname = `/${database}`;
   const owner = new Pool({ connectionString: url.toString() });
@@ -80,7 +80,7 @@ async function main() {
       WHERE f.flight_status = 'Landed' AND f.departure_time > now() - interval '21 days' AND f.arrival_time < now()`);
     await owner.query('ALTER TABLE flight ENABLE TRIGGER USER');
     await owner.query(`INSERT INTO passenger(first_name, last_name, date_of_birth, email)
-      SELECT 'Bench', 'Traveller ' || n, DATE '1950-01-01' + (n % 20000), 'bench' || n || '@bench.skyops.test' FROM generate_series(4001, 104000) n`);
+      SELECT 'Bench', 'Traveller ' || n, DATE '1950-01-01' + (n % 20000), 'bench' || n || '@bench.strata.test' FROM generate_series(4001, 104000) n`);
     // A realistic outbox: almost everything already delivered.
     await owner.query("UPDATE outbox_event SET processed_at = now() WHERE event_id % 50 <> 0");
     await owner.query('VACUUM ANALYZE');

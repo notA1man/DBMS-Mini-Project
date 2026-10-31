@@ -47,7 +47,7 @@ export function Search({initial={}}:{initial?:SearchInitial}={}) {
     </article>)}
     </div><section className="feature-grid"><article><h2>Your seat, secured.</h2><p>Availability is checked again when you reserve. Prices can change until booking.</p></article>
       <article><h2>Everything in one place.</h2><p>Your bookings, receipts, check-in and boarding passes are together in My Trips.</p></article>
-      <article><h2>Know before you go.</h2><p>Explore the SkyOps demo baggage, check-in and refund policies.</p><Link href="/policies">Read our policies →</Link></article></section>
+      <article><h2>Know before you go.</h2><p>Explore the Strata demo baggage, check-in and refund policies.</p><Link href="/policies">Read our policies →</Link></article></section>
   </>;
 }
 function Leg({id,cabin,origin,destination,dep,arr}:{id:string;cabin:string;origin:string;destination:string;dep:string;arr:string}) {

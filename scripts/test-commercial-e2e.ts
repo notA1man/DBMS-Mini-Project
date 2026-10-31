@@ -20,7 +20,7 @@ async function runScript(file:string,env:NodeJS.ProcessEnv) {
 }
 
 async function main() {
-  const database=`skyops_commercial_e2e_${randomUUID().replaceAll('-','')}`;
+  const database=`strata_commercial_e2e_${randomUUID().replaceAll('-','')}`;
   const admin=new Pool({connectionString:process.env.DATABASE_URL_OWNER});
   const ownerUrl=new URL(process.env.DATABASE_URL_OWNER!);ownerUrl.pathname=`/${database}`;
   const appUrl=new URL(process.env.DATABASE_URL!);appUrl.pathname=`/${database}`;
@@ -44,7 +44,7 @@ async function main() {
     const semantic=(await owner.query('SELECT * FROM fn_hybrid_kb($1::vector,$2,NULL)',[JSON.stringify(vector),'Maximum permitted weight for cabin luggage'])).rows;
     expect(semantic[0].category).toBe('baggage');
     console.log('PASS: 25 seeded policies and real local semantic retrieval.');
-    await owner.query("INSERT INTO app_user(email,password_hash,role) VALUES('admin@skyops.test',crypt('admin-test-password',gen_salt('bf',4)),'ADMIN')");
+    await owner.query("INSERT INTO app_user(email,password_hash,role) VALUES('admin@strata.test',crypt('admin-test-password',gen_salt('bf',4)),'ADMIN')");
     const listener=createServer();await new Promise<void>(resolve=>listener.listen(0,'127.0.0.1',resolve));
     const port=(listener.address() as {port:number}).port;await new Promise<void>(resolve=>listener.close(()=>resolve()));
     const base=`http://localhost:${port}`;
@@ -62,7 +62,7 @@ async function main() {
     page.on('pageerror',error=>{logs+=`\nBrowser: ${error.message}`;});
     await page.goto(`${base}/register`);
     await page.getByLabel('First name',{exact:true}).fill('Test');await page.getByLabel('Last name',{exact:true}).fill('Passenger');
-    await page.getByLabel('Date of birth').fill('2000-01-01');await page.getByLabel('Email',{exact:true}).fill('passenger@skyops.test');
+    await page.getByLabel('Date of birth').fill('2000-01-01');await page.getByLabel('Email',{exact:true}).fill('passenger@strata.test');
     await page.getByLabel('Password',{exact:true}).fill('passenger-test-password');await page.getByRole('button',{name:'Create account',exact:true}).click();
     await expect(page).toHaveURL(`${base}/trips`);await expect(page.getByText('No bookings yet.',{exact:false})).toBeVisible();
     console.log('PASS: browser registration and sign-in.');
@@ -83,7 +83,7 @@ async function main() {
     await page.getByRole('button',{name:'Record payment'}).click();
     await expect(page.getByRole('heading',{name:`Booking ${pnr}`,exact:false})).toContainText('Confirmed');
     await page.getByText('Web check-in',{exact:true}).click();await page.getByRole('button',{name:'Check in',exact:true}).click();
-    await expect(page.getByText('SKYOPS BOARDING PASS',{exact:true})).toBeVisible();
+    await expect(page.getByText('STRATA BOARDING PASS',{exact:true})).toBeVisible();
     const qr=await context.request.get(`${base}/api/boarding-pass?pnr=${pnr}&seq=1`);expect(qr.status()).toBe(200);expect(qr.headers()['content-type']).toBe('image/png');
     console.log('PASS: direct search, reserve, payment, check-in and boarding QR.');
     const outbox=(await owner.query('SELECT * FROM outbox_event')).rows;
@@ -110,18 +110,18 @@ async function main() {
     const other=await browser.newContext();
     const otherPage=await other.newPage();await otherPage.goto(`${base}/register`);
     await otherPage.getByLabel('First name',{exact:true}).fill('Other');await otherPage.getByLabel('Last name',{exact:true}).fill('Passenger');
-    await otherPage.getByLabel('Date of birth').fill('2001-01-01');await otherPage.getByLabel('Email',{exact:true}).fill('other@skyops.test');await otherPage.getByLabel('Password',{exact:true}).fill('other-test-password');
+    await otherPage.getByLabel('Date of birth').fill('2001-01-01');await otherPage.getByLabel('Email',{exact:true}).fill('other@strata.test');await otherPage.getByLabel('Password',{exact:true}).fill('other-test-password');
     await otherPage.getByRole('button',{name:'Create account',exact:true}).click();await expect(otherPage).toHaveURL(`${base}/trips`);
     expect((await other.request.get(`${base}/api/commercial/booking?pnr=${pnr}`)).status()).toBe(404);
     expect((await other.request.get(`${base}/api/boarding-pass?pnr=${pnr}&seq=1`)).status()).toBe(404);
     const staff=await browser.newContext(),staffPage=await staff.newPage();await staffPage.goto(`${base}/login`);
-    await staffPage.getByLabel('Email',{exact:true}).fill('admin@skyops.test');await staffPage.getByLabel('Password',{exact:true}).fill('admin-test-password');await staffPage.getByRole('button',{name:'Sign in',exact:true}).click();await expect(staffPage).toHaveURL(`${base}/ops`);
+    await staffPage.getByLabel('Email',{exact:true}).fill('admin@strata.test');await staffPage.getByLabel('Password',{exact:true}).fill('admin-test-password');await staffPage.getByRole('button',{name:'Sign in',exact:true}).click();await expect(staffPage).toHaveURL(`${base}/ops`);
     const similar=await staff.request.post(`${base}/api/commercial/complaints`,{headers:{Origin:base},data:{query:'The cabin crew were helpful',route:'BLR-BOM',since:'2000-01-01'}});
     const similarData=await similar.json();
     expect(similar.status(),JSON.stringify(similarData)).toBe(200);expect(similarData.complaints).toHaveLength(1);
     await runScript('scripts/seed-commercial-demo.ts',scriptEnv);await runScript('scripts/seed-commercial-demo.ts',scriptEnv);
-    expect((await owner.query("SELECT count(*)::int AS n FROM app_user WHERE email IN ('passenger1@skyops.test','passenger2@skyops.test','passenger3@skyops.test')")).rows[0].n).toBe(3);
-    const passengerId=(await owner.query("SELECT user_id FROM app_user WHERE email='passenger@skyops.test'")).rows[0].user_id;
+    expect((await owner.query("SELECT count(*)::int AS n FROM app_user WHERE email IN ('passenger1@strata.test','passenger2@strata.test','passenger3@strata.test')")).rows[0].n).toBe(3);
+    const passengerId=(await owner.query("SELECT user_id FROM app_user WHERE email='passenger@strata.test'")).rows[0].user_id;
     const disable=await staff.request.post(`${base}/api/commercial/user`,{headers:{Origin:base},data:{id:passengerId,role:'PASSENGER',active:false,crewId:null}});expect(disable.status()).toBe(200);
     expect((await context.request.get(`${base}/api/commercial/identity`)).status()).toBe(401);
     const mobile=await browser.newContext({viewport:{width:390,height:844}}),mobilePage=await mobile.newPage();await mobilePage.goto(base);

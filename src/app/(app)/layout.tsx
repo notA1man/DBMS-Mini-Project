@@ -14,8 +14,8 @@ export default async function AppLayout({ children }: Readonly<{ children: React
     <div className="app-shell">
       <AppAtmosphere />
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <header className="app-header"><Link className="brand" href="/" aria-label="SkyOps home">
-        <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M10 1 L19 10 L10 19 L1 10 Z" fill="none" stroke="currentColor" strokeWidth="1.6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/></svg>SKYOPS</Link>
+      <header className="app-header"><Link className="brand" href="/" aria-label="Strata home">
+        <svg viewBox="0 0 20 20" width="14" height="14" aria-hidden="true"><path d="M10 1 L19 10 L10 19 L1 10 Z" fill="none" stroke="currentColor" strokeWidth="1.6"/><circle cx="10" cy="10" r="2.2" fill="currentColor"/></svg>STRATA</Link>
         <nav aria-label="Main navigation">
           <NavLink href="/search">Flights</NavLink><NavLink href="/board">Departures</NavLink><NavLink href="/policies">Policies</NavLink>
           {(!role || role === 'PASSENGER') && <NavLink href="/trips">My Trips</NavLink>}
@@ -36,7 +36,7 @@ export default async function AppLayout({ children }: Readonly<{ children: React
       <footer className="app-footer">
         <div className="footer-grid">
           <div>
-            <Link className="footer-word" href="/">SKYOPS</Link>
+            <Link className="footer-word" href="/">STRATA</Link>
             <p className="footer-note">Disruption-aware airline operations &amp; ticketing.<br />PostgreSQL · Neo4j · MongoDB · pgvector</p>
           </div>
           <nav className="footer-cols" aria-label="Footer">

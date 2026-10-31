@@ -33,7 +33,7 @@ export function TripDetail({ pnr }: { pnr: string }) {
       return <article key={t.ticket_seq}>
         <div className={`pass ${voided ? 'void' : ''}`}>
           <div className="pass-main">
-            <div className="pass-top"><span><b>SKYOPS</b> · {t.flight_number} · {t.fare_class}</span><span className={`pill ${t.checkin_status === 'CheckedIn' ? 'CheckedIn' : t.ticket_status}`}>{t.checkin_status === 'CheckedIn' ? 'Checked in' : t.ticket_status}</span></div>
+            <div className="pass-top"><span><b>STRATA</b> · {t.flight_number} · {t.fare_class}</span><span className={`pill ${t.checkin_status === 'CheckedIn' ? 'CheckedIn' : t.ticket_status}`}>{t.checkin_status === 'CheckedIn' ? 'Checked in' : t.ticket_status}</span></div>
             <div className="pass-route">
               <div><small>FROM</small><strong>{t.origin}</strong><span>{city(t.origin)}</span></div>
               <div className="pass-plane" />
@@ -48,7 +48,7 @@ export function TripDetail({ pnr }: { pnr: string }) {
           </div>
           <div className="pass-stub">
             {t.boarding_pass_code
-              ? <><p className="eyebrow">SKYOPS BOARDING PASS</p><Image unoptimized src={`/api/boarding-pass?pnr=${pnr}&seq=${t.ticket_seq}`} width={150} height={150} alt={`Boarding QR for ${t.first_name} ${t.last_name}`} /></>
+              ? <><p className="eyebrow">STRATA BOARDING PASS</p><Image unoptimized src={`/api/boarding-pass?pnr=${pnr}&seq=${t.ticket_seq}`} width={150} height={150} alt={`Boarding QR for ${t.first_name} ${t.last_name}`} /></>
               : <div className="barcode" aria-hidden="true" />}
             <dl>
               <div><dt>PNR</dt><dd>{pnr}</dd></div>

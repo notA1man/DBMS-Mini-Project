@@ -9,7 +9,7 @@ export function LoginForm({register=false}:{register?:boolean}) {
     <p className="eyebrow">THE WORLD IS STILL OUT THERE</p><h2 className="account-title">The sky <br/>is yours.</h2>
     <p>One account. Every journey.<br/>Your flights, seats and boarding passes, together.</p>
     <Link className="account-explore" href="/search">Explore flights <span aria-hidden="true">↗</span></Link>
-  </div><section className="account-pass card narrow"><p className="eyebrow">YOUR SKYOPS ACCOUNT</p><h1>{register?'Make room for your next trip.':'Welcome aboard.'}</h1>
+  </div><section className="account-pass card narrow"><p className="eyebrow">YOUR STRATA ACCOUNT</p><h1>{register?'Make room for your next trip.':'Welcome aboard.'}</h1>
     <form className="stack" onSubmit={async event=>{
       event.preventDefault();setBusy(true);setError('');const fields=Object.fromEntries(new FormData(event.currentTarget));
       try {
@@ -28,6 +28,6 @@ export function LoginForm({register=false}:{register?:boolean}) {
       <label>Password<input type="password" name="password" autoComplete={register?'new-password':'current-password'} required minLength={12} maxLength={72} aria-describedby="password-help"/></label>
       <small id="password-help">12–72 bytes. Avoid using a password from another service.</small>
       <button disabled={busy}>{busy?'Please wait…':register?'Create account':'Sign in'} <span aria-hidden="true">↗</span></button><p role="alert">{error}</p>
-    </form><p>{register?'Already registered?':'New to SkyOps?'} <Link href={register?'/login':'/register'}>{register?'Sign in':'Create an account'}</Link></p>
+    </form><p>{register?'Already registered?':'New to Strata?'} <Link href={register?'/login':'/register'}>{register?'Sign in':'Create an account'}</Link></p>
   </section></div>;
 }

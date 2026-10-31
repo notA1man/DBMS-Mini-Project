@@ -1,4 +1,4 @@
-name: skyops
+name: strata
 
 services:
   postgres:

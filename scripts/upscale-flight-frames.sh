@@ -25,7 +25,7 @@ LOGO="delogo=x=1128:y=566:w=66:h=68" # generator watermark, bottom-right
 BATCH=24                             # frames per GPU pass; keeps 4x PNGs on disk small
 
 # ---- Real-ESRGAN binary (cached outside the repo) --------------------------------------
-TOOLS="${XDG_CACHE_HOME:-$HOME/.cache}/skyops-realesrgan"
+TOOLS="${XDG_CACHE_HOME:-$HOME/.cache}/strata-realesrgan"
 if [[ -n "${REALESRGAN_BIN:-}" ]]; then
   BIN="$REALESRGAN_BIN"
   MODELS="${REALESRGAN_MODELS:-$(dirname "$BIN")/models}"
@@ -46,7 +46,7 @@ SCALE=4
 [[ "$MODEL" == realesr-animevideov3 ]] && MODEL="realesr-animevideov3-x4"
 
 # ---- work dirs ---------------------------------------------------------------------------
-WORK="$(mktemp -d "${TMPDIR:-/tmp}/skyops-upscale.XXXXXX")"
+WORK="$(mktemp -d "${TMPDIR:-/tmp}/strata-upscale.XXXXXX")"
 trap 'rm -rf -- "$WORK"' EXIT
 mkdir -p "$WORK/src" "$WORK/batch" "$WORK/up" "$WORK/d" "$WORK/m"
 

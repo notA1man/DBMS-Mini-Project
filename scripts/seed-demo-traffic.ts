@@ -3,7 +3,7 @@
 //   npm run db:seed:traffic                 (DEMO_LOAD=0.45 for a busier network)
 //
 // Clearly synthetic: PNRs start with "T" (fn_generate_pnr only produces hex PNRs, so they never
-// collide), passengers are "Demo Traveller n" @demo.skyops.test and cannot log in. Historical
+// collide), passengers are "Demo Traveller n" @demo.strata.test and cannot log in. Historical
 // tickets need the ticket validation trigger disabled for this transaction, because the database
 // (correctly) refuses to sell seats on flights that have already departed.
 import { Pool } from 'pg';
@@ -18,18 +18,18 @@ async function main() {
   const started = Date.now();
   try {
     await c.query('BEGIN');
-    await c.query("SELECT pg_advisory_xact_lock(hashtext('skyops-demo-traffic'))");
+    await c.query("SELECT pg_advisory_xact_lock(hashtext('strata-demo-traffic'))");
     if ((await c.query("SELECT count(*)::int AS n FROM booking WHERE booking_id LIKE 'T%'")).rows[0].n > 0) {
       console.log('Demo traffic already present - nothing to do.');
       await c.query('ROLLBACK');
       return;
     }
     await c.query(`INSERT INTO passenger(first_name, last_name, date_of_birth, email)
-      SELECT 'Demo', 'Traveller ' || n, DATE '1960-01-01' + (n * 37 % 15000), 'traveller' || n || '@demo.skyops.test'
+      SELECT 'Demo', 'Traveller ' || n, DATE '1960-01-01' + (n * 37 % 15000), 'traveller' || n || '@demo.strata.test'
       FROM generate_series(1, $1) n ON CONFLICT (email) DO NOTHING`, [PASSENGERS]);
     await c.query(`INSERT INTO app_user(email, password_hash, role, passenger_id)
       SELECT p.email, 'demo-account-no-login', 'PASSENGER', p.passenger_id FROM passenger p
-      WHERE p.email LIKE '%@demo.skyops.test' ON CONFLICT (email) DO NOTHING`);
+      WHERE p.email LIKE '%@demo.strata.test' ON CONFLICT (email) DO NOTHING`);
 
     // Bulk load: the per-row commercial triggers (validation, booking-total sync, receipt issue) are
     // switched off for this transaction only and their effects are applied set-based below.
@@ -40,7 +40,7 @@ async function main() {
     await c.query(`
       CREATE TEMP TABLE demo_ticket ON COMMIT DROP AS
       WITH demo AS (SELECT row_number() OVER (ORDER BY p.passenger_id) AS k, p.passenger_id, u.user_id
-                    FROM passenger p JOIN app_user u USING (passenger_id) WHERE p.email LIKE '%@demo.skyops.test'),
+                    FROM passenger p JOIN app_user u USING (passenger_id) WHERE p.email LIKE '%@demo.strata.test'),
       buckets AS (
         SELECT f.flight_id, f.aircraft_id, f.departure_time, f.flight_status, ff.fare_class, ff.base_fare,
           floor(ff.seats_allocated * least(0.98, $1 * (CASE WHEN f.departure_time < now() THEN 1.35 ELSE 1.25 - extract(epoch FROM f.departure_time - now()) / 86400 / 20 END)

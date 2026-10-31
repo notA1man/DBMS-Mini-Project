@@ -11,7 +11,7 @@ import { dispatchOutbox, drainOutbox } from '@/lib/outbox/dispatcher';
 import { flightEventsFrom, type OutboxEvent } from '@/lib/outbox/ops';
 
 process.loadEnvFile('.env');
-const database = `skyops_outbox_test_${randomUUID().replaceAll('-', '')}`;
+const database = `strata_outbox_test_${randomUUID().replaceAll('-', '')}`;
 const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
 const url = new URL(process.env.DATABASE_URL_OWNER!); url.pathname = `/${database}`;
 const owner = new Pool({ connectionString: url.toString() });
@@ -40,7 +40,7 @@ function fakeGraph() {
 
 beforeAll(async () => {
   await admin.query(`CREATE DATABASE "${database}"`); created = true;
-  await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO skyops_app`);
+  await owner.query(`GRANT CONNECT ON DATABASE "${database}" TO strata_app`);
   for (const file of (await readdir('db/postgres/init')).filter(f => f.endsWith('.sql')).sort()) {
     const sql = await readFile(`db/postgres/init/${file}`, 'utf8');
     if (sql.replace(/--[^\n]*/g, '').trim()) await owner.query(sql);

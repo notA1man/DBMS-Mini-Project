@@ -16,8 +16,8 @@
 
 Environment: Windows, Node 22.17.0, Docker PostgreSQL 17 + pgvector and MongoDB 7,
 Chromium 156 through Playwright. These are real service tests, not mocked
-database responses. Test databases have unique `skyops_commercial_test_*` or
-`skyops_commercial_e2e_*` names and are dropped in cleanup. Existing application
+database responses. Test databases have unique `strata_commercial_test_*` or
+`strata_commercial_e2e_*` names and are dropped in cleanup. Existing application
 databases and Docker volumes are not reset.
 
 ## Database and Mongo coverage
@@ -100,7 +100,7 @@ Neo4j were **not** reachable in this environment; the suites that need them skip
 | Index benchmark | `npm run bench:indexes` | [benchmarks.md](benchmarks.md) |
 
 All database tests run in a uniquely named disposable database built from the real
-`db/postgres/init/*.sql`, through the least-privilege `skyops_app` role, and drop it afterwards.
+`db/postgres/init/*.sql`, through the least-privilege `strata_app` role, and drop it afterwards.
 
 ## Operations SQL tests (`ops.test.ts`)
 
@@ -174,7 +174,7 @@ Neo4j 5.26; production build; Chromium (Google Chrome) for the browser runs.
 | MongoDB + Neo4j stores | `npm run test:stores` | **5 / 5**, then the graph was rebuilt with `graph:reconcile` |
 | Ops browser journey | `npm run test:e2e:ops` | **11 / 11** |
 | Commercial browser journey | `npm run test:e2e:commercial` | passes |
-| Fresh-volume init | throwaway `pgvector/pgvector:pg17` container with `db/postgres/init` mounted | all 17 scripts apply; 22 tables, 15 baselined migrations, 32 airports, `skyops_app` can log in |
+| Fresh-volume init | throwaway `pgvector/pgvector:pg17` container with `db/postgres/init` mounted | all 17 scripts apply; 22 tables, 15 baselined migrations, 32 airports, `strata_app` can log in |
 | Health | `GET /api/health` | PostgreSQL, MongoDB and Neo4j all ok |
 
 **Visual inspection.** A Playwright crawl signed in as guest, passenger, ops, crew and admin and

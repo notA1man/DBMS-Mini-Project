@@ -5,7 +5,7 @@ export async function embed(text:string):Promise<number[]> {
   if(!extractor) {
     extractor=(async()=>{
       const {pipeline,env}=await import('@huggingface/transformers');
-      env.cacheDir=process.env.EMBEDDING_CACHE_DIR || (process.env.VERCEL ? '/tmp/skyops-models' : '.models');
+      env.cacheDir=process.env.EMBEDDING_CACHE_DIR || (process.env.VERCEL ? '/tmp/strata-models' : '.models');
       return await pipeline('feature-extraction',process.env.EMBEDDING_MODEL || 'Xenova/all-MiniLM-L6-v2',
         {dtype:'q8'}) as unknown as Extractor;
     })().catch(error=>{extractor=undefined;throw error;});

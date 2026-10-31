@@ -15,7 +15,7 @@ export function Trips() {
     {data?.trips.length===0 && <p className="empty">No bookings yet. <Link href="/search">Find your next flight →</Link></p>}
     <div className="trip-list">{data?.trips.map(b=><Link className="trip-card" href={`/trips/${b.booking_id}`} key={b.booking_id}>
       <div className={`pass ${b.booking_status==='Cancelled'?'void':''}`}><div className="pass-main">
-        <div className="pass-top"><span><b>SKYOPS</b> · {b.flight_number ?? 'BOOKING'}{Number(b.legs)>1?` +${Number(b.legs)-1}`:''}</span><span className={`pill ${b.booking_status}`}>{b.booking_status}</span></div>
+        <div className="pass-top"><span><b>STRATA</b> · {b.flight_number ?? 'BOOKING'}{Number(b.legs)>1?` +${Number(b.legs)-1}`:''}</span><span className={`pill ${b.booking_status}`}>{b.booking_status}</span></div>
         <div className="pass-route"><div><small>FROM</small><strong>{b.origin ?? '—'}</strong><span>{b.origin ? AIRPORT_BY_CODE[b.origin]?.city : ''}</span></div>
           <div className="pass-plane"/><div><small>TO</small><strong>{b.destination ?? '—'}</strong><span>{b.destination ? AIRPORT_BY_CODE[b.destination]?.city : ''}</span></div></div>
         <dl className="pass-fields"><div><dt>Departs</dt><dd>{b.departure_time && b.origin ? localTime(b.departure_time,b.origin,true) : '—'}</dd></div>

@@ -37,7 +37,7 @@ const flightEvent = (id: string, updatedAt: string, status: string, changes: Rec
 
 describe.skipIf(!hasMongo)('MongoDB operations collections', () => {
   let db: Db;
-  beforeAll(async () => { db = mongoClient.db(`skyops_ops_test_${suffix}`); await initOpsMongo(db); });
+  beforeAll(async () => { db = mongoClient.db(`strata_ops_test_${suffix}`); await initOpsMongo(db); });
   afterAll(async () => { await db?.dropDatabase(); });
 
   test('strict validators reject malformed documents', async () => {
@@ -67,7 +67,7 @@ describe.skipIf(!hasMongo)('MongoDB operations collections', () => {
 });
 
 describe.skipIf(!hasNeo4j)('Neo4j graph', () => {
-  const database = `skyops_graph_test_${suffix}`;
+  const database = `strata_graph_test_${suffix}`;
   const admin = new Pool({ connectionString: process.env.DATABASE_URL_OWNER });
   const url = new URL(process.env.DATABASE_URL_OWNER!); url.pathname = `/${database}`;
   const owner = new Pool({ connectionString: url.toString() });

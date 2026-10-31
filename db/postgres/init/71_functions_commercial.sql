@@ -2,7 +2,7 @@
 -- Owner: Aiman
 -- fn_generate_pnr, fn_dynamic_fare, fn_book, sp_pay, sp_cancel_booking, sp_check_in, fn_seat_map
 -- Every SECURITY DEFINER entry point authenticates the transaction context.
--- Only the trusted server may hold skyops_app credentials and set app.user_id.
+-- Only the trusted server may hold strata_app credentials and set app.user_id.
 CREATE FUNCTION fn_current_user_id() RETURNS bigint
 LANGUAGE sql STABLE AS $$
   SELECT nullif(current_setting('app.user_id', true), '')::bigint

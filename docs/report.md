@@ -1,4 +1,4 @@
-# SkyOps — project report
+# Strata — project report
 
 DBMS Experiential Learning, Level 3 project. **Team:** Aiman A Nawab (PES1UG24CS038) · Aditya.
 
@@ -19,7 +19,7 @@ and operations are separate systems, a cancellation can leave a passenger holdin
 longer exists, two bookings can take the same seat, and a late aircraft can be scheduled out on
 its next sector before the inbound flight has landed.
 
-SkyOps is a disruption-aware airline platform that keeps both sides in one transactional
+Strata is a disruption-aware airline platform that keeps both sides in one transactional
 database. It projects the parts that are better stored as documents (event history, maintenance,
 audit) or as a graph (connections between flights).
 
@@ -42,7 +42,7 @@ and rebooking; a live departures board; network analytics; an audit log; an outb
 
 **Out of scope:** real payment gateways, real airline or government integrations, automatic
 expiry of unpaid holds, and production cloud deployment. Fares come from a deterministic teaching
-formula, not a revenue-management system. Policy text is written for SkyOps and is not copied from
+formula, not a revenue-management system. Policy text is written for Strata and is not copied from
 any carrier.
 
 ## 4. Functional requirements
@@ -117,7 +117,7 @@ an empty volume.
 | kb_document | **doc_id**, title, category, body, fts | — |
 | kb_chunk | **chunk_id**, doc_id, chunk_index, content, fts, embedding | doc_id → kb_document |
 | feedback_embedding | **feedback_oid**, flight_id, sentiment, created_at, embedding | flight_id → flight |
-| skyops_migration | **name**, checksum, applied_at | — (migration bookkeeping) |
+| strata_migration | **name**, checksum, applied_at | — (migration bookkeeping) |
 
 Size of the deployed schema: 22 tables, 7 views and 1 materialized view, 53 named functions and
 procedures (`fn_*`, `sp_*`), 18 triggers, 66 indexes, 12 row-level security policies.
@@ -200,7 +200,7 @@ stale snapshots are ignored by `updatedAt`.
 
 | Question | Answer |
 |---|---|
-| What is embedded | Policy chunks (25 authored SkyOps documents) and passenger feedback comments |
+| What is embedded | Policy chunks (25 authored Strata documents) and passenger feedback comments |
 | Model | `Xenova/all-MiniLM-L6-v2`, run locally; 384 dimensions, L2-normalized |
 | Storage | `vector(384)` columns `kb_chunk.embedding` and `feedback_embedding.embedding` |
 | Index and metric | HNSW, `vector_cosine_ops` (`m = 16`, `ef_construction = 64`); operator `<=>` |
@@ -306,7 +306,7 @@ flowchart LR
 
 - The browser never holds a database credential. Connection strings come from environment
   variables, read on the server (`src/lib/env.ts`); `.env` is not committed.
-- The web tier connects as `skyops_app`. That role has no direct INSERT/UPDATE/DELETE on business
+- The web tier connects as `strata_app`. That role has no direct INSERT/UPDATE/DELETE on business
   tables and cannot read password hashes or salaries.
 - Authorization is checked three times: middleware by path, the route handler by session role,
   and the SQL routine by the role stored in `app_user` (with RLS underneath).
@@ -356,7 +356,7 @@ even when `app.role` is spoofed.
 
 ## 14. Conclusion and future enhancements
 
-SkyOps puts airline invariants — one holder per seat, no overlapping aircraft or crew duties,
+Strata puts airline invariants — one holder per seat, no overlapping aircraft or crew duties,
 legal crews, consistent payments — into the relational database itself, where the application
 cannot forget them. MongoDB and Neo4j hold the data that is better shaped as documents and as a
 graph, and the transactional outbox keeps them in step: one commit in PostgreSQL, then

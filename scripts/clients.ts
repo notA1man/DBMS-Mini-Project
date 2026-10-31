@@ -13,7 +13,7 @@ export function clients({ owner = false } = {}) {
     ? neo4j.driver(process.env.NEO4J_URI, neo4j.auth.basic(process.env.NEO4J_USER ?? 'neo4j', process.env.NEO4J_PASSWORD),
         { disableLosslessIntegers: true, connectionTimeout: 5000, maxTransactionRetryTime: 3000 })
     : null;
-  const mongo = mongoClient ? async () => { await mongoClient.connect(); return mongoClient.db(process.env.MONGODB_DB ?? 'skyops'); } : null;
+  const mongo = mongoClient ? async () => { await mongoClient.connect(); return mongoClient.db(process.env.MONGODB_DB ?? 'strata'); } : null;
   const close = async () => { await pg.end(); await mongoClient?.close(); await graph?.close(); };
   return { pg, mongo, graph, close };
 }

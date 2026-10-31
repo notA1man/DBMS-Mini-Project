@@ -22,7 +22,7 @@ Aditya's `/api/search/itineraries` (Neo4j with a recursive-CTE fallback; see ope
 
 ## Problem, objectives and functional requirements
 
-SkyOps connects airline sales and operations. A seat must not be sold twice,
+Strata connects airline sales and operations. A seat must not be sold twice,
 even when concurrent passengers book it. Payments, receipts, check-in and
 cancellation must preserve an auditable relationship to the booking.
 
@@ -112,7 +112,7 @@ totals 20/30/40kg for Economy/Business/First, with a 32kg per-bag ceiling.
 
 ## Identity and security
 
-The server connects as `skyops_app`, never as the migration owner. `withTx`
+The server connects as `strata_app`, never as the migration owner. `withTx`
 sets transaction-local `app.user_id`; authorization helpers derive role and
 active status from `app_user`, **not** the caller-supplied `app.role` string.
 Credentials for this role must remain on the server: clients with arbitrary SQL
@@ -170,7 +170,7 @@ cosine distance, m=16 and ef_construction=64. `fn_hybrid_kb(vector,query,categor
 combines the best 20 vector and 20 English FTS chunk hits using reciprocal rank
 fusion `1/(60+rank)`, returning up to five passages with document attribution.
 A null vector gives explicit text-only fallback; it must not be called semantic
-retrieval in the UI. Policy content must be authored as SkyOps demo policy,
+retrieval in the UI. Policy content must be authored as Strata demo policy,
 not represented as an actual carrier's rules.
 
 `db/postgres/seed/policies.ts` contains 25 authored documents. Each is shorter
@@ -215,7 +215,7 @@ npm run dev
 The main seed creates 25 policies with local embeddings. Optional
 `SEED_ADMIN_EMAIL` + `SEED_ADMIN_PASSWORD` bootstrap an administrator without
 changing an existing account. There is no default admin password. The demo seed
-creates `passenger1@skyops.test` through `passenger3@skyops.test`, three bookings,
+creates `passenger1@strata.test` through `passenger3@strata.test`, three bookings,
 and two successful payments against a future operations-seeded flight. It does
 not reset data or change existing passwords.
 
@@ -239,7 +239,7 @@ Showcase queries: `SELECT * FROM fn_seat_map($1)`; owned
 `npm test -- src/server/tests/commercial.test.ts` creates a uniquely named
 disposable PostgreSQL database using `DATABASE_URL_OWNER`, loads the exact
 full migration set plus `ops_data.sql`, tests through `SET LOCAL ROLE
-skyops_app`, then drops only that database. It does not reset Docker volumes.
+strata_app`, then drops only that database. It does not reset Docker volumes.
 The role must already exist (Compose initialization creates it).
 
 Operations migrations, seed flights, the graph itinerary API, cancellation/rebooking

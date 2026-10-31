@@ -7,7 +7,7 @@ import { FRAME_SETS, FrameSequence, drawCover } from "./frame-sequence";
 import { GlobeRenderer } from "./globe";
 import styles from "./landing.module.css";
 
-const BRAND = "SKYOPS";
+const BRAND = "STRATA";
 const VIDEO_SECONDS = 10;
 const HERO_HOLD = 0.05; // share of the flight track that holds frame 0 under the hero
 

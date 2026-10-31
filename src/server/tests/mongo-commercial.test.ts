@@ -5,7 +5,7 @@ import { initCommercialMongo,feedbackScorecard } from '../../../db/mongo/commerc
 import { deliverCommercialNotification } from '../../lib/outbox/commercial';
 process.loadEnvFile('.env');
 const client=new MongoClient(process.env.MONGODB_URI!);
-const db=client.db(`skyops_commercial_test_${randomUUID().replaceAll('-','')}`);
+const db=client.db(`strata_commercial_test_${randomUUID().replaceAll('-','')}`);
 let created=false;
 beforeAll(async()=>{await client.connect();await initCommercialMongo(db);created=true;await initCommercialMongo(db);});
 afterAll(async()=>{if(created)await db.dropDatabase();await client.close();});

@@ -7,7 +7,7 @@ async function main() {
   const mongo=new MongoClient(process.env.MONGODB_URI!);
   try {
     await mongo.connect();
-    const collection=mongo.db(process.env.MONGODB_DB || 'skyops').collection('feedback');
+    const collection=mongo.db(process.env.MONGODB_DB || 'strata').collection('feedback');
     const cursor=collection.find({embeddingStatus:'pending'}).sort({createdAt:1}).limit(100);
     let count=0;
     for await(const feedback of cursor) {

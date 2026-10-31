@@ -29,7 +29,7 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "SkyOps — Book the sky",
+  title: "Strata — Book the sky",
   description: "Disruption-aware airline operations & ticketing platform. A DBMS demonstration project.",
 };
 

@@ -58,7 +58,7 @@ is a constant, so it is genuinely time-zone independent).
 ## 3. Procedures and functions (`70_functions_ops.sql`)
 
 Every write the app makes goes through a `SECURITY DEFINER` routine that re-checks the caller's
-role from `app_user` (`fn_assert_role`) — the `skyops_app` role has no INSERT/UPDATE/DELETE on the
+role from `app_user` (`fn_assert_role`) — the `strata_app` role has no INSERT/UPDATE/DELETE on the
 operations tables, so a bug in the web tier cannot bypass the rules. Each routine also writes an
 audit event (`fn_emit_ops_audit`) into the outbox in the same transaction.
 
@@ -94,12 +94,12 @@ audit event (`fn_emit_ops_audit`) into the outbox in the same transaction.
 
 ## 5. Security (`91_rls_grants_ops.sql`)
 
-- `skyops_app` gets SELECT on operations tables and EXECUTE on the routines; no direct DML.
+- `strata_app` gets SELECT on operations tables and EXECUTE on the routines; no direct DML.
 - `crew.salary` is excluded from the column grant; only `fn_crew_admin` (ADMIN) returns it.
 - RLS on `crew` (staff and crew only — passengers cannot list crew), `crew_certification`
   (ADMIN/OPS see all, a crew member their own) and `crew_assignment` (ADMIN/OPS see all, a crew
   member their own duties plus who else is on those flights).
-- `skyops_readonly` (showcase) reads only airports, aircraft, flights, fares and `v_aircraft_age`.
+- `strata_readonly` (showcase) reads only airports, aircraft, flights, fares and `v_aircraft_age`.
 - The outbox and the revenue materialized view are not granted at all; they are reached only
   through `fn_outbox_*` and `fn_route_revenue`.
 - Middleware gates `/ops` (OPS, ADMIN), `/crew` (CREW), `/admin` (ADMIN); every API action
@@ -173,8 +173,8 @@ npm run worker                # keep delivering while the app runs
 npm run dev
 ```
 
-With `SEED_STAFF_PASSWORD` set, the ops seed creates `ops@skyops.test`, `captain@skyops.test` and
-`purser@skyops.test`. The seed is deterministic: aircraft rotations come from a greedy
+With `SEED_STAFF_PASSWORD` set, the ops seed creates `ops@strata.test`, `captain@strata.test` and
+`purser@strata.test`. The seed is deterministic: aircraft rotations come from a greedy
 scheduler (widebodies reposition between Indian hubs between long-haul rotations) and rosters are
 built by calling the same legality check the UI uses, inside savepoints.
 

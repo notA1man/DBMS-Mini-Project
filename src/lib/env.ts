@@ -3,7 +3,7 @@ import { z } from "zod";
 const schema = z.object({
   DATABASE_URL: z.string().url(),
   MONGODB_URI: z.string().min(1),
-  MONGODB_DB: z.string().default("skyops"),
+  MONGODB_DB: z.string().default("strata"),
   NEO4J_URI: z.string().min(1),
   NEO4J_USER: z.string().default("neo4j"),
   NEO4J_PASSWORD: z.string().min(1),

@@ -1,4 +1,4 @@
-# MongoDB (db `skyops`, replica set `rs0`)
+# MongoDB (db `strata`, replica set `rs0`)
 
 Validators and indexes are created by code, so the same setup runs against Docker and Atlas:
 `npm run db:mongo:commercial` (`db/mongo/commercial.ts`) and `npm run db:mongo:ops` (`db/mongo/ops.ts`,

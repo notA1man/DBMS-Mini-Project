@@ -108,7 +108,7 @@ export const BoardingPass = forwardRef<HTMLDivElement, PassProps>(
         <form className={styles.passCard} onSubmit={submit} noValidate>
           <div className={`${styles.passMain} ${styles.piece}`} data-piece="main">
             <div className={styles.passTop}>
-              <span>SKYOPS</span>
+              <span>STRATA</span>
               <span>BOARDING PASS</span>
               <span className={styles.passTopDim}>ECONOMY · ANY FARE</span>
             </div>

@@ -1,4 +1,4 @@
-# SkyOps — Airline Operations & Ticketing Platform
+# Strata — Airline Operations & Ticketing Platform
 
 DBMS Level 3 mini project. Disruption-aware airline platform built on **PostgreSQL** (relational core, pgvector), **Neo4j** (route & connection graph) and **MongoDB** (operational events, maintenance, feedback, audit), with a **Next.js** web app.
 

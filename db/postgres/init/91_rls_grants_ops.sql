@@ -9,9 +9,9 @@
 
 -- Crew: salary is excluded by a column-level grant (administrators read it via fn_crew_admin).
 GRANT SELECT (crew_id, crew_name, designation, license_number, hire_date, supervisor_id,
-              base_airport, is_active, updated_at) ON crew TO skyops_app;
-GRANT SELECT ON crew_certification, crew_assignment TO skyops_app;
-GRANT SELECT ON v_aircraft_age, v_flight_load, v_flight_manifest, v_crew_roster, v_crew_coverage TO skyops_app;
+              base_airport, is_active, updated_at) ON crew TO strata_app;
+GRANT SELECT ON crew_certification, crew_assignment TO strata_app;
+GRANT SELECT ON v_aircraft_age, v_flight_load, v_flight_manifest, v_crew_roster, v_crew_coverage TO strata_app;
 
 -- Staff and crew can see the crew list (names, ranks, bases); passengers cannot.
 ALTER TABLE crew ENABLE ROW LEVEL SECURITY;
@@ -32,7 +32,7 @@ CREATE POLICY crew_assignment_read ON crew_assignment FOR SELECT
 
 -- Deferred exclusion constraints are re-checked at COMMIT as the session role, outside any
 -- SECURITY DEFINER routine, so the index expression's (pure) helper must be executable.
-GRANT EXECUTE ON FUNCTION ops_turnaround_range(timestamptz, timestamptz) TO skyops_app;
+GRANT EXECUTE ON FUNCTION ops_turnaround_range(timestamptz, timestamptz) TO strata_app;
 
 GRANT EXECUTE ON FUNCTION
   fn_has_role(text[]), fn_current_crew_id(),
@@ -47,7 +47,7 @@ GRANT EXECUTE ON FUNCTION
   fn_flight_bookers(bigint), fn_seats_remaining(bigint, text),
   -- Audit entries for native MongoDB actions (maintenance logs, crew reports); actor = caller.
   fn_emit_ops_audit(text, text, text, jsonb)
-TO skyops_app;
+TO strata_app;
 
 GRANT EXECUTE ON PROCEDURE
   sp_generate_seat_map(bigint, jsonb), sp_set_aircraft_status(bigint, text),
@@ -57,7 +57,7 @@ GRANT EXECUTE ON PROCEDURE
   sp_cancel_flight(bigint, text, jsonb),
   sp_rebook_ticket(text, smallint, bigint[], jsonb),
   sp_refresh_analytics(), sp_outbox_retry(bigint)
-TO skyops_app;
+TO strata_app;
 
 -- Read-only analytics role: aggregate operational data only, never passenger or crew PII.
-GRANT SELECT ON airport, aircraft, flight, flight_fare, v_aircraft_age TO skyops_readonly;
+GRANT SELECT ON airport, aircraft, flight, flight_fare, v_aircraft_age TO strata_readonly;
